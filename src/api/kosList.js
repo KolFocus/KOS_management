@@ -1,23 +1,30 @@
 import { supabase, TABLES } from '@/utils/supabase'
+import { getCurrentUserId } from '@/utils/userIsolation'
 
 // KOS列表管理API
 export class KosListAPI {
   // 获取KOS列表
   static async getKosList(params = {}) {
-    const { page = 1, pageSize = 20, search = '', channel = '', status = '' } = params
+    const { page = 1, pageSize = 20, search = '', brandId = '', status = '' } = params
+    
+    const userId = await getCurrentUserId()
+    if (!userId) {
+      throw new Error('用户未登录，无法获取KOS列表')
+    }
     
     let query = supabase
       .from(TABLES.KOS_LIST)
       .select('*', { count: 'exact' })
+      .eq('supabase_user_id', userId)
     
     // 搜索条件
     if (search) {
-      query = query.or(`品牌.ilike.%${search}%,昵称.ilike.%${search}%,用户ID.ilike.%${search}%`)
+      query = query.or(`品牌.ilike.%${search}%,用户ID.ilike.%${search}%`)
     }
     
     // 筛选条件
-    if (channel) {
-      query = query.eq('渠道', channel)
+    if (brandId) {
+      query = query.eq('品牌ID', brandId)
     }
     
     if (status !== '') {
@@ -28,9 +35,9 @@ export class KosListAPI {
     const from = (page - 1) * pageSize
     const to = from + pageSize - 1
     
-    // 数据库未包含“创建时间”列，改为稳定排序：先按“排序”升序，再按“品牌ID”升序
+    // 数据库排序：先按"排序"升序（空值排在最后），再按"品牌ID"升序
     query = query
-      .order('排序', { ascending: true, nullsFirst: true })
+      .order('排序', { ascending: true, nullsLast: true })
       .order('品牌ID', { ascending: true })
       .range(from, to)
     
@@ -66,9 +73,17 @@ export class KosListAPI {
   
   // 创建KOS
   static async createKos(kosData) {
+    const userId = await getCurrentUserId()
+    if (!userId) {
+      throw new Error('用户未登录，无法创建KOS')
+    }
+
     const { data, error } = await supabase
       .from(TABLES.KOS_LIST)
-      .insert([kosData])
+      .insert([{
+        ...kosData,
+        supabase_user_id: userId
+      }])
       .select()
       .single()
     
@@ -117,13 +132,10 @@ export class KosListAPI {
       参与统计: status,
       // 保留原有字段，避免NOT NULL约束错误
       品牌: kos.品牌,
-      昵称: kos.昵称,
-      头像: kos.头像,
       排序: kos.排序,
       所属用户: kos.所属用户,
       所属店铺: kos.所属店铺,
-      渠道: kos.渠道,
-      AZ_批次号: kos.AZ_批次号
+      渠道: kos.渠道
     }))
     
     const { data, error } = await supabase
@@ -161,9 +173,20 @@ export class KosListAPI {
   
   // 批量导入KOS（覆盖模式，使用upsert基于复合主键）
   static async batchImportKos(kosList) {
+    const userId = await getCurrentUserId()
+    if (!userId) {
+      throw new Error('用户未登录，无法导入KOS数据')
+    }
+
+    // 为所有KOS数据添加用户ID
+    const kosListWithUserId = kosList.map(kos => ({
+      ...kos,
+      supabase_user_id: userId
+    }))
+
     const { data, error } = await supabase
       .from(TABLES.KOS_LIST)
-      .upsert(kosList, {
+      .upsert(kosListWithUserId, {
         onConflict: '品牌ID,用户ID'
       })
       .select()

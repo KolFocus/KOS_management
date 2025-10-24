@@ -7,13 +7,13 @@
         <p>管理品牌离线导入的KOS销售数据</p>
       </div>
       <div class="header-right">
+        <el-button type="primary" @click="handleAdd">
+          <el-icon><Plus /></el-icon>
+          新增销售数据
+        </el-button>
         <el-button type="success" @click="showImportDialog = true">
           <el-icon><Upload /></el-icon>
           Excel导入
-        </el-button>
-        <el-button type="primary" @click="handleExport">
-          <el-icon><Download /></el-icon>
-          导出数据
         </el-button>
       </div>
     </div>
@@ -48,10 +48,10 @@
                   class="filter-select"
                 >
                   <el-option
-                    v-for="brand in brandList"
-                    :key="brand"
-                    :label="brand"
-                    :value="brand"
+                    v-for="brand in brandOptions"
+                    :key="brand.value"
+                    :label="brand.label"
+                    :value="brand.value"
                   />
                 </el-select>
               </el-form-item>
@@ -59,12 +59,16 @@
             
             <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="5">
               <el-form-item label="周期类型">
-                <el-input 
+                <el-select 
                   v-model="searchForm.cycleType" 
-                  placeholder="输入周期类型" 
+                  placeholder="选择周期类型" 
                   clearable
                   class="filter-select"
-                />
+                >
+                  <el-option label="日" value="BY_DAY" />
+                  <el-option label="周" value="BY_WEEK" />
+                  <el-option label="月" value="BY_MONTH" />
+                </el-select>
               </el-form-item>
             </el-col>
             
@@ -187,11 +191,13 @@
           <el-table-column type="selection" min-width="55" />
           
           <el-table-column prop="品牌" label="品牌" min-width="120" />
-          <el-table-column prop="品牌ID" label="品牌ID" min-width="100" />
-          <el-table-column prop="周期类型" label="周期类型" min-width="100" />
+          <el-table-column prop="周期类型" label="周期类型" min-width="100">
+            <template #default="{ row }">
+              <span>{{ getCycleTypeLabel(row.周期类型) }}</span>
+            </template>
+          </el-table-column>
           
-          <el-table-column prop="日期" label="日期" min-width="120" />
-          <el-table-column prop="短日期" label="短日期" min-width="120" />
+          <el-table-column prop="日期" label="日期" min-width="120" sortable />
           <el-table-column prop="员工姓名" label="员工姓名" min-width="120" />
           <el-table-column prop="店铺编号" label="店铺编号" min-width="120" />
           
@@ -201,8 +207,16 @@
             </template>
           </el-table-column>
           
-          <el-table-column prop="本期累计成单" label="本期累计成单" min-width="140" />
-          <el-table-column prop="企微留资数" label="企微留资数" min-width="120" />
+          <el-table-column prop="本期累计成单" label="本期累计成单" min-width="140">
+            <template #default="{ row }">
+              <span class="money-text">¥{{ formatMoney(row.本期累计成单) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="企微留资数" label="企微留资数" min-width="120">
+            <template #default="{ row }">
+              <span class="money-text">¥{{ formatMoney(row.企微留资数) }}</span>
+            </template>
+          </el-table-column>
           
           
           <el-table-column label="操作" min-width="120" fixed="right">
@@ -260,6 +274,7 @@
       <div class="import-content">
         <el-steps :active="importStep" finish-status="success">
           <el-step title="选择文件" />
+          <el-step title="选择品牌和日期" />
           <el-step title="数据预览" />
           <el-step title="导入完成" />
         </el-steps>
@@ -294,8 +309,84 @@
             </div>
           </div>
           
-          <!-- 步骤2: 数据预览 -->
+          <!-- 步骤2: 选择品牌和日期 -->
           <div v-if="importStep === 1" class="step-2">
+            <div class="brand-date-selection">
+              <h4>选择品牌和日期</h4>
+              <p>为批量导入的销售数据选择统一的品牌和日期信息</p>
+              
+              <el-form :model="importBrandDateForm" label-width="120px">
+                <el-form-item label="品牌" required>
+                  <el-select 
+                    v-model="importBrandDateForm.品牌" 
+                    placeholder="请选择品牌" 
+                    @change="onImportBrandChange"
+                    style="width: 100%"
+                  >
+                    <el-option
+                      v-for="brand in brandOptions"
+                      :key="brand.value"
+                      :label="brand.label"
+                      :value="brand.value"
+                    />
+                  </el-select>
+                </el-form-item>
+                
+                <el-form-item label="品牌ID" required>
+                  <el-input 
+                    v-model="importBrandDateForm.品牌ID" 
+                    placeholder="品牌ID将自动填充"
+                    readonly
+                  />
+                </el-form-item>
+                
+                <el-form-item label="周期类型" required>
+                  <el-select 
+                    v-model="importBrandDateForm.周期类型" 
+                    placeholder="请选择周期类型"
+                    style="width: 100%"
+                    @change="onCycleTypeChange"
+                  >
+                    <el-option label="日" value="BY_DAY" />
+                    <el-option label="周" value="BY_WEEK" />
+                    <el-option label="月" value="BY_MONTH" />
+                  </el-select>
+                </el-form-item>
+                
+                <el-form-item label="日期" required>
+                  <el-date-picker
+                    v-model="importBrandDateForm.日期"
+                    type="date"
+                    placeholder="选择日期"
+                    format="YYYY-MM-DD"
+                    value-format="YYYY-MM-DD"
+                    style="width: 100%"
+                    @change="onDateChange"
+                  />
+                  <div class="form-tip">
+                    <span v-if="importBrandDateForm.周期类型 === 'BY_DAY'">日类型：使用选择的日期</span>
+                    <span v-else-if="importBrandDateForm.周期类型 === 'BY_WEEK'">周类型：自动取这一周的开始第一天（周一）</span>
+                    <span v-else-if="importBrandDateForm.周期类型 === 'BY_MONTH'">月类型：自动取这一月的开始第一天</span>
+                  </div>
+                </el-form-item>
+                
+              </el-form>
+              
+              <div class="step-actions">
+                <el-button @click="importStep = 0">上一步</el-button>
+                <el-button 
+                  type="primary" 
+                  @click="proceedToPreview"
+                  :disabled="!importBrandDateForm.品牌 || !importBrandDateForm.品牌ID || !importBrandDateForm.周期类型 || !importBrandDateForm.日期"
+                >
+                  下一步
+                </el-button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 步骤3: 数据预览 -->
+          <div v-if="importStep === 2" class="step-3">
             <div class="preview-header">
               <h4>数据预览 (共{{ previewData.length }}条记录)</h4>
               <el-button type="primary" @click="handleImport" :loading="importing">
@@ -306,10 +397,8 @@
             
             <el-table :data="previewData.slice(0, 10)" border max-height="400">
               <el-table-column prop="品牌" label="品牌" width="100" />
-              <el-table-column prop="品牌ID" label="品牌ID" width="100" />
               <el-table-column prop="周期类型" label="周期类型" width="100" />
               <el-table-column prop="日期" label="日期" width="120" />
-              <el-table-column prop="短日期" label="短日期" width="120" />
               <el-table-column prop="员工姓名" label="员工姓名" width="120" />
               <el-table-column prop="店铺编号" label="店铺编号" width="120" />
               <el-table-column prop="小红书成单" label="小红书成单" width="120" />
@@ -322,8 +411,8 @@
             </div>
           </div>
           
-          <!-- 步骤3: 导入完成 -->
-          <div v-if="importStep === 2" class="step-3">
+          <!-- 步骤4: 导入完成 -->
+          <div v-if="importStep === 3" class="step-4">
             <el-result
               :icon="importResult.success ? 'success' : 'error'"
               :title="importResult.success ? '导入成功' : '导入失败'"
@@ -343,10 +432,10 @@
       </div>
     </el-dialog>
 
-    <!-- 编辑对话框 -->
+    <!-- 编辑/新增对话框 -->
     <el-dialog
       v-model="showEditDialog"
-      title="编辑销售数据"
+      :title="isEdit ? '编辑销售数据' : '新增销售数据'"
       width="600px"
       @close="handleEditDialogClose"
     >
@@ -359,21 +448,46 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="品牌" prop="品牌">
-              <el-input v-model="editFormData.品牌" placeholder="请输入品牌名称" />
+              <el-select 
+                v-model="editFormData.品牌" 
+                placeholder="请选择品牌" 
+                @change="onEditBrandChange"
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="brand in brandOptions"
+                  :key="brand.value"
+                  :label="brand.label"
+                  :value="brand.value"
+                />
+              </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="品牌ID" prop="品牌ID">
-              <el-input v-model="editFormData.品牌ID" placeholder="请输入品牌ID" />
+              <el-input 
+                v-model="editFormData.品牌ID" 
+                placeholder="品牌ID将自动填充"
+                readonly
+              />
             </el-form-item>
           </el-col>
         </el-row>
         
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="周期类型" prop="周期类型">
-              <el-input v-model="editFormData.周期类型" placeholder="请输入周期类型" />
-            </el-form-item>
+        <el-form-item label="周期类型" prop="周期类型">
+          <el-select
+            v-model="editFormData.周期类型"
+            placeholder="请选择周期类型"
+            style="width: 100%"
+            @change="onEditCycleTypeChange"
+          >
+            <el-option label="日" value="BY_DAY" />
+            <el-option label="周" value="BY_WEEK" />
+            <el-option label="月" value="BY_MONTH" />
+          </el-select>
+        </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="员工姓名" prop="员工姓名">
@@ -385,12 +499,15 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="日期" prop="日期">
-              <el-input v-model="editFormData.日期" placeholder="请输入日期" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="短日期" prop="短日期">
-              <el-input v-model="editFormData.短日期" placeholder="请输入短日期" />
+              <el-date-picker
+                v-model="editFormData.日期"
+                type="date"
+                placeholder="选择日期"
+                format="YYYY-MM-DD"
+                value-format="YYYY-MM-DD"
+                style="width: 100%"
+                @change="onEditDateChange"
+              />
             </el-form-item>
           </el-col>
         </el-row>
@@ -436,7 +553,7 @@
       <template #footer>
         <el-button @click="showEditDialog = false">取消</el-button>
         <el-button type="primary" @click="handleEditSubmit" :loading="editSubmitting">
-          更新
+          {{ isEdit ? '更新' : '新增' }}
         </el-button>
       </template>
     </el-dialog>
@@ -446,10 +563,12 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useSalesDataStore } from '@/stores/salesData'
+import { useBrandManagementStore } from '@/stores/brandManagement'
 import { MessageUtils, FormUtils, DataUtils } from '@/utils/common'
 import { ExcelUtils } from '@/utils/excel'
 
 const salesDataStore = useSalesDataStore()
+const brandManagementStore = useBrandManagementStore()
 
 // 响应式数据
 const loading = computed(() => salesDataStore.loading)
@@ -458,6 +577,18 @@ const total = computed(() => salesDataStore.total)
 const currentPage = computed({
   get: () => salesDataStore.currentPage,
   set: (value) => salesDataStore.setPagination(value, pageSize.value)
+})
+
+// 品牌选项
+const brandOptions = computed(() => {
+  console.log('品牌数据:', brandManagementStore.brands)
+  console.log('品牌数据长度:', brandManagementStore.brands?.length || 0)
+  const options = (brandManagementStore.brands || []).map(brand => ({
+    label: brand.品牌,
+    value: brand.品牌
+  }))
+  console.log('品牌选项:', options)
+  return options
 })
 const pageSize = computed({
   get: () => salesDataStore.pageSize,
@@ -487,17 +618,25 @@ const previewData = ref([])
 const importing = ref(false)
 const importResult = ref({ success: false, message: '' })
 
+// 导入品牌和日期表单
+const importBrandDateForm = reactive({
+  品牌: '',
+  品牌ID: '',
+  周期类型: 'BY_WEEK',
+  日期: ''
+})
+
 // 编辑相关
 const showEditDialog = ref(false)
 const editSubmitting = ref(false)
+const isEdit = ref(false)
 // 保存原始复合主键信息，用于更新匹配
-const originalKeys = ref({ 品牌ID: '', 周期类型: '', 短日期: '', 员工姓名: '', 店铺编号: '' })
+const originalKeys = ref({ 品牌ID: '', 周期类型: '', 日期: '', 员工姓名: '', 店铺编号: '' })
 const editFormData = reactive({
   品牌: '',
   品牌ID: '',
   周期类型: '',
   日期: '',
-  短日期: '',
   员工姓名: '',
   店铺编号: '',
   小红书成单: 0,
@@ -520,7 +659,128 @@ const editFormRules = {
 const editFormRef = ref()
 const uploadRef = ref()
 
+// 导入品牌选择变化处理
+const onImportBrandChange = (brandName) => {
+  const brand = brandManagementStore.brands.find(b => b.品牌 === brandName)
+  if (brand) {
+    importBrandDateForm.品牌ID = brand.ID
+  }
+}
+
+// 编辑品牌选择变化处理
+const onEditBrandChange = (brandName) => {
+  const brand = brandManagementStore.brands.find(b => b.品牌 === brandName)
+  if (brand) {
+    editFormData.品牌ID = brand.ID
+  }
+}
+
+// 编辑表单周期类型变化处理
+const onEditCycleTypeChange = (cycleType) => {
+  if (editFormData.日期) {
+    // 根据周期类型重新计算日期
+    const selectedDate = new Date(editFormData.日期)
+    const calculatedDate = calculateDateByCycleType(selectedDate, cycleType)
+    editFormData.日期 = calculatedDate
+    console.log('编辑表单周期类型变化:', cycleType, '基于日期:', selectedDate, '计算后日期:', calculatedDate)
+  } else {
+    // 如果没有选择日期，使用当前日期计算默认值
+    const calculatedDate = calculateDateByCycleType(new Date(), cycleType)
+    editFormData.日期 = calculatedDate
+    console.log('编辑表单周期类型变化:', cycleType, '使用当前日期计算:', calculatedDate)
+  }
+}
+
+// 编辑表单日期变化处理
+const onEditDateChange = (date) => {
+  if (date && editFormData.周期类型) {
+    // 根据周期类型计算日期
+    const calculatedDate = calculateDateByCycleType(new Date(date), editFormData.周期类型)
+    editFormData.日期 = calculatedDate
+    console.log('编辑表单日期变化:', date, '周期类型:', editFormData.周期类型, '计算后日期:', calculatedDate)
+  }
+}
+
+// 日期变化处理
+const onDateChange = (date) => {
+  if (date && importBrandDateForm.周期类型) {
+    // 根据周期类型计算日期
+    const calculatedDate = calculateDateByCycleType(new Date(date), importBrandDateForm.周期类型)
+    importBrandDateForm.日期 = calculatedDate
+    console.log('用户选择日期:', date, '周期类型:', importBrandDateForm.周期类型, '计算后日期:', calculatedDate)
+  }
+}
+
+// 周期类型变化处理
+const onCycleTypeChange = (cycleType) => {
+  if (importBrandDateForm.日期) {
+    // 根据周期类型重新计算日期
+    const selectedDate = new Date(importBrandDateForm.日期)
+    const calculatedDate = calculateDateByCycleType(selectedDate, cycleType)
+    importBrandDateForm.日期 = calculatedDate
+    console.log('周期类型变化:', cycleType, '基于日期:', selectedDate, '计算后日期:', calculatedDate)
+  } else {
+    // 如果没有选择日期，使用当前日期计算默认值
+    const calculatedDate = calculateDateByCycleType(new Date(), cycleType)
+    importBrandDateForm.日期 = calculatedDate
+    console.log('周期类型变化:', cycleType, '使用当前日期计算:', calculatedDate)
+  }
+}
+
+// 根据周期类型计算日期
+const calculateDateByCycleType = (date, cycleType) => {
+  const d = new Date(date)
+  
+  switch (cycleType) {
+    case 'BY_DAY':
+      // 日类型：使用选择的日期
+      return d.toISOString().split('T')[0]
+      
+    case 'BY_WEEK':
+      // 周类型：取这一周的开始第一天（周一）
+      const dayOfWeek = d.getDay()
+      const monday = new Date(d)
+      monday.setDate(d.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
+      return monday.getFullYear() + '-' + 
+             String(monday.getMonth() + 1).padStart(2, '0') + '-' + 
+             String(monday.getDate()).padStart(2, '0')
+      
+    case 'BY_MONTH':
+      // 月类型：取这一月的开始第一天
+      const firstDay = new Date(d.getFullYear(), d.getMonth(), 1)
+      return firstDay.getFullYear() + '-' + 
+             String(firstDay.getMonth() + 1).padStart(2, '0') + '-' + 
+             String(firstDay.getDate()).padStart(2, '0')
+      
+    default:
+      return d.toISOString().split('T')[0]
+  }
+}
+
+// 进入预览步骤
+const proceedToPreview = () => {
+  // 为所有预览数据设置统一的品牌和日期信息
+  previewData.value = previewData.value.map(item => ({
+    ...item,
+    品牌: importBrandDateForm.品牌,
+    品牌ID: importBrandDateForm.品牌ID,
+    周期类型: importBrandDateForm.周期类型,
+    日期: importBrandDateForm.日期
+  }))
+  importStep.value = 2
+}
+
 // 方法
+// 获取周期类型的中文标签
+const getCycleTypeLabel = (cycleType) => {
+  const cycleTypeMap = {
+    'BY_DAY': '日',
+    'BY_WEEK': '周', 
+    'BY_MONTH': '月'
+  }
+  return cycleTypeMap[cycleType] || cycleType
+}
+
 const fetchData = async () => {
   try {
     await salesDataStore.fetchSalesDataList()
@@ -531,7 +791,15 @@ const fetchData = async () => {
 }
 
 const handleSearch = () => {
-  salesDataStore.setSearchParams(searchForm)
+  // 将品牌名称转换为品牌ID
+  const searchParams = { ...searchForm }
+  if (searchForm.brandId) {
+    const brand = brandManagementStore.brands.find(b => b.品牌 === searchForm.brandId)
+    if (brand) {
+      searchParams.brandId = brand.ID
+    }
+  }
+  salesDataStore.setSearchParams(searchParams)
   fetchData()
 }
 
@@ -572,31 +840,70 @@ const handleSelectionChange = (selection) => {
   selectedRows.value = selection
 }
 
+const handleAdd = () => {
+  console.log('=== 点击新增销售数据按钮 ===')
+  console.log('当前isEdit状态:', isEdit.value)
+  console.log('当前showEditDialog状态:', showEditDialog.value)
+  
+  try {
+    // 重置表单数据
+    Object.assign(editFormData, {
+      品牌: '',
+      品牌ID: '',
+      周期类型: 'BY_WEEK',
+      日期: calculateDateByCycleType(new Date(), 'BY_WEEK'), // 自动计算默认日期
+      员工姓名: '',
+      店铺编号: '',
+      小红书成单: 0,
+      本期累计成单: 0,
+      企微留资数: 0
+    })
+    originalKeys.value = { 品牌ID: '', 周期类型: '', 日期: '', 员工姓名: '', 店铺编号: '' }
+    isEdit.value = false
+    showEditDialog.value = true
+    
+    console.log('设置后isEdit状态:', isEdit.value)
+    console.log('设置后showEditDialog状态:', showEditDialog.value)
+    console.log('自动计算的日期:', editFormData.日期)
+    console.log('=== 新增按钮处理完成 ===')
+  } catch (error) {
+    console.error('新增按钮处理出错:', error)
+    // 即使出错也要打开对话框
+    isEdit.value = false
+    showEditDialog.value = true
+  }
+}
+
 const handleEdit = (row) => {
   Object.assign(editFormData, row)
-  originalKeys.value = {
-    品牌ID: row.品牌ID,
-    周期类型: row.周期类型,
-    短日期: row.短日期,
-    员工姓名: row.员工姓名,
-    店铺编号: row.店铺编号
-  }
+    originalKeys.value = {
+      品牌ID: row.品牌ID,
+      周期类型: row.周期类型,
+      日期: row.日期,
+      员工姓名: row.员工姓名,
+      店铺编号: row.店铺编号
+    }
+  isEdit.value = true
   showEditDialog.value = true
 }
 
 const handleDelete = async (row) => {
   try {
+    console.log('开始删除销售数据:', row)
     await MessageUtils.confirmDelete(`销售数据记录`)
+    console.log('用户确认删除，开始执行删除操作')
     await salesDataStore.deleteSalesData(
       row.品牌ID,
       row.周期类型,
-      row.短日期,
+      row.日期,
       row.员工姓名,
       row.店铺编号
     )
+    console.log('删除操作完成')
     MessageUtils.success('删除成功')
     fetchData()
   } catch (error) {
+    console.error('删除失败:', error)
     if (error !== 'cancel') {
       MessageUtils.error(error.message)
     }
@@ -616,15 +923,11 @@ const handleBatchDelete = async () => {
   }
 }
 
-const handleExport = () => {
-  ExcelUtils.exportToExcel(salesDataList.value, '销售数据')
-  MessageUtils.success('导出成功')
-}
 
 const handleFileChange = async (file) => {
   try {
     const excelData = await ExcelUtils.parseExcelFile(file.raw)
-    const headers = ['品牌', '品牌ID', '周期类型', '日期', '短日期', '员工姓名', '店铺编号', '小红书成单', '本期累计成单', '企微留资数']
+    const headers = ['员工姓名', '店铺编号', '小红书成单', '本期累计成单', '企微留资数']
     
     const validation = ExcelUtils.validateExcelData(excelData, headers)
     if (!validation.isValid) {
@@ -665,7 +968,7 @@ const handleImport = async () => {
       success: true,
       message: `成功导入${previewData.value.length}条记录`
     }
-    importStep.value = 2
+    importStep.value = 3
     
     MessageUtils.success('导入成功')
     fetchData()
@@ -674,7 +977,7 @@ const handleImport = async () => {
       success: false,
       message: error.message
     }
-    importStep.value = 2
+    importStep.value = 3
     MessageUtils.error(error.message)
   } finally {
     importing.value = false
@@ -682,8 +985,8 @@ const handleImport = async () => {
 }
 
 const handleEditSubmit = async () => {
-  console.log('=== 开始提交销售数据编辑 ===')
-  console.log('编辑数据:', editFormData)
+  console.log('=== 开始提交销售数据', isEdit.value ? '编辑' : '新增', '===')
+  console.log('数据:', editFormData)
   
   try {
     console.log('开始表单验证...')
@@ -691,26 +994,34 @@ const handleEditSubmit = async () => {
     console.log('✓ 表单验证通过')
     
     editSubmitting.value = true
-    console.log('开始更新数据...')
+    console.log('开始', isEdit.value ? '更新' : '创建', '数据...')
     
-    await salesDataStore.updateSalesData(
-      originalKeys.value.品牌ID,
-      originalKeys.value.周期类型,
-      originalKeys.value.短日期,
-      originalKeys.value.员工姓名,
-      originalKeys.value.店铺编号,
-      editFormData
-    )
-    MessageUtils.success('更新成功')
-    console.log('✓ 更新成功')
+    if (isEdit.value) {
+      // 编辑模式：更新现有数据
+      await salesDataStore.updateSalesData(
+        originalKeys.value.品牌ID,
+        originalKeys.value.周期类型,
+        originalKeys.value.日期,
+        originalKeys.value.员工姓名,
+        originalKeys.value.店铺编号,
+        editFormData
+      )
+      MessageUtils.success('更新成功')
+      console.log('✓ 更新成功')
+    } else {
+      // 新增模式：创建新数据
+      await salesDataStore.createSalesData(editFormData)
+      MessageUtils.success('新增成功')
+      console.log('✓ 新增成功')
+    }
     
     console.log('关闭对话框...')
     showEditDialog.value = false
     console.log('刷新数据...')
     fetchData()
-    console.log('=== 编辑完成 ===')
+    console.log('=== 操作完成 ===')
   } catch (error) {
-    console.error('编辑失败:', error)
+    console.error('操作失败:', error)
     if (error && error.message) {
       MessageUtils.error(error.message)
     } else {
@@ -729,15 +1040,16 @@ const handleEditDialogClose = () => {
   Object.assign(editFormData, {
     品牌: '',
     品牌ID: '',
-    周期类型: '',
+    周期类型: 'BY_WEEK',
     日期: '',
-    短日期: '',
     员工姓名: '',
     店铺编号: '',
     小红书成单: 0,
     本期累计成单: 0,
     企微留资数: 0
   })
+  originalKeys.value = { 品牌ID: '', 周期类型: '', 日期: '', 员工姓名: '', 店铺编号: '' }
+  isEdit.value = false
   editFormRef.value?.resetFields()
 }
 
@@ -745,20 +1057,20 @@ const resetImport = () => {
   importStep.value = 0
   previewData.value = []
   importResult.value = { success: false, message: '' }
+  importBrandDateForm.品牌 = ''
+  importBrandDateForm.品牌ID = ''
+  importBrandDateForm.周期类型 = 'BY_WEEK'
+  importBrandDateForm.日期 = ''
   uploadRef.value?.clearFiles()
 }
 
 const downloadTemplate = () => {
   const templateData = [
-    ['品牌', '品牌ID', '周期类型', '日期', '短日期', '员工姓名', '店铺编号', '小红书成单', '本期累计成单', '企微留资数'],
-    ['示例品牌', '001', 'day', '2024-01-01', '2024-01-01', '张三', '001', '1000.00', '100', '10']
+    ['员工姓名', '店铺编号', '小红书成单', '本期累计成单', '企微留资数'],
+    ['张三', '001', '1000.00', '100', '10']
   ]
   
-  const worksheet = XLSX.utils.aoa_to_sheet(templateData)
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, worksheet, '销售数据模板')
-  
-  XLSX.writeFile(workbook, '销售数据导入模板.xlsx')
+  ExcelUtils.downloadTemplate(templateData, '销售数据导入模板.xlsx', '销售数据模板')
   MessageUtils.success('模板下载成功')
 }
 
@@ -768,7 +1080,21 @@ const formatMoney = DataUtils.formatMoney
 const formatDateTime = DataUtils.formatDateTime
 
 // 生命周期
-onMounted(() => {
+onMounted(async () => {
+  try {
+    console.log('开始加载品牌数据...')
+    await brandManagementStore.loadBrands()
+    console.log('品牌数据加载完成:', brandManagementStore.brands)
+    console.log('品牌数据长度:', brandManagementStore.brands?.length || 0)
+    
+    // 如果品牌数据为空，提示用户
+    if (!brandManagementStore.brands || brandManagementStore.brands.length === 0) {
+      console.warn('品牌数据为空，请先在品牌关联中添加品牌')
+    }
+  } catch (error) {
+    console.error('加载品牌数据失败:', error)
+  }
+  
   fetchData()
 })
 </script>
@@ -1060,5 +1386,36 @@ onMounted(() => {
 
 :deep(.el-upload__text) {
   margin-top: 20px;
+}
+
+.brand-date-selection {
+  padding: 20px;
+}
+
+.brand-date-selection h4 {
+  margin-bottom: 10px;
+  color: #303133;
+}
+
+.brand-date-selection p {
+  margin-bottom: 20px;
+  color: #606266;
+  font-size: 14px;
+}
+
+.step-actions {
+  margin-top: 30px;
+  text-align: right;
+}
+
+.step-actions .el-button {
+  margin-left: 10px;
+}
+
+.form-tip {
+  margin-top: 5px;
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.4;
 }
 </style>

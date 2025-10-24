@@ -4,7 +4,7 @@
     <div class="page-header">
       <div class="header-left">
         <h1>KOS列表管理</h1>
-        <p>管理小红书专业号的KOS列表信息</p>
+        <p>管理小红书专业号的KOS列表信息（按排序字段从小到大排序，空值排在最后）</p>
       </div>
       <div class="header-right">
         <el-button type="success" @click="showImportDialog = true">
@@ -27,7 +27,7 @@
               <el-form-item label="搜索">
                 <el-input
                   v-model="searchForm.search"
-                  placeholder="品牌、昵称或用户ID"
+                  placeholder="品牌或用户ID"
                   clearable
                   class="search-input"
                   @keyup.enter="handleSearch"
@@ -40,18 +40,18 @@
             </el-col>
             
             <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="5">
-              <el-form-item label="渠道">
+              <el-form-item label="品牌">
                 <el-select 
-                  v-model="searchForm.channel" 
-                  placeholder="选择渠道" 
+                  v-model="searchForm.brandId" 
+                  placeholder="选择品牌" 
                   clearable
                   class="filter-select"
                 >
                   <el-option
-                    v-for="channel in channelList"
-                    :key="channel"
-                    :label="channel"
-                    :value="channel"
+                    v-for="brand in brandOptions"
+                    :key="brand.value"
+                    :label="brand.label"
+                    :value="brand.value"
                   />
                 </el-select>
               </el-form-item>
@@ -190,25 +190,13 @@
           <el-table-column type="selection" min-width="55" />
           
           <el-table-column prop="品牌" label="品牌" min-width="120" />
-          <el-table-column prop="品牌ID" label="品牌ID" min-width="100" />
           <el-table-column prop="用户ID" label="用户ID" min-width="120" />
-          <el-table-column prop="昵称" label="昵称" min-width="120" />
           
-          <el-table-column prop="头像" label="头像" min-width="80">
+          <el-table-column prop="排序" label="排序" min-width="80" sortable>
             <template #default="{ row }">
-              <el-avatar 
-                v-if="row.头像 && isValidAvatarUrl(row.头像)" 
-                :src="row.头像" 
-                :size="40"
-                @error="handleAvatarError"
-              />
-              <el-avatar v-else :size="40">
-                <el-icon><User /></el-icon>
-              </el-avatar>
+              <el-tag type="primary" size="small">{{ row.排序 }}</el-tag>
             </template>
           </el-table-column>
-          
-          <el-table-column prop="排序" label="排序" min-width="80" />
           <el-table-column prop="所属用户" label="所属用户" min-width="120" />
           <el-table-column prop="所属店铺" label="所属店铺" min-width="120" />
           <el-table-column prop="渠道" label="渠道" min-width="100" />
@@ -221,7 +209,6 @@
             </template>
           </el-table-column>
           
-          <el-table-column prop="AZ_批次号" label="AZ批次号" min-width="150" />
           
           <el-table-column label="操作" min-width="180">
             <template #default="{ row }">
@@ -297,31 +284,25 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="品牌" prop="品牌">
-              <el-input v-model="formData.品牌" placeholder="请输入品牌名称" />
+              <el-select v-model="formData.品牌" placeholder="请选择品牌" @change="onBrandChange">
+                <el-option
+                  v-for="brand in brandOptions"
+                  :key="brand.value"
+                  :label="brand.label"
+                  :value="brand.value"
+                />
+              </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="品牌ID" prop="品牌ID">
-              <el-input v-model="formData.品牌ID" placeholder="请输入品牌ID" />
+              <el-input v-model="formData.品牌ID" placeholder="品牌ID将自动填充" readonly />
             </el-form-item>
           </el-col>
         </el-row>
         
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="用户ID" prop="用户ID">
-              <el-input v-model="formData.用户ID" placeholder="请输入用户ID" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="昵称" prop="昵称">
-              <el-input v-model="formData.昵称" placeholder="请输入昵称" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-form-item label="头像" prop="头像">
-          <el-input v-model="formData.头像" placeholder="请输入头像URL" />
+        <el-form-item label="用户ID" prop="用户ID">
+          <el-input v-model="formData.用户ID" placeholder="请输入用户ID" />
         </el-form-item>
         
         <el-row :gutter="20">
@@ -357,9 +338,6 @@
           </el-radio-group>
         </el-form-item>
         
-        <el-form-item label="AZ批次号" prop="AZ_批次号">
-          <el-input v-model="formData.AZ_批次号" placeholder="请输入AZ批次号" />
-        </el-form-item>
       </el-form>
       
       <template #footer>
@@ -380,6 +358,7 @@
       <div class="import-content">
         <el-steps :active="importStep" finish-status="success">
           <el-step title="选择文件" />
+          <el-step title="选择品牌" />
           <el-step title="数据预览" />
           <el-step title="导入完成" />
         </el-steps>
@@ -414,8 +393,53 @@
             </div>
           </div>
           
-          <!-- 步骤2: 数据预览 -->
+          <!-- 步骤2: 选择品牌 -->
           <div v-if="importStep === 1" class="step-2">
+            <div class="brand-selection">
+              <h4>选择品牌</h4>
+              <p>为批量导入的KOS选择统一的品牌信息</p>
+              
+              <el-form :model="importBrandForm" label-width="100px">
+                <el-form-item label="品牌" required>
+                  <el-select 
+                    v-model="importBrandForm.品牌" 
+                    placeholder="请选择品牌" 
+                    @change="onImportBrandChange"
+                    style="width: 100%"
+                  >
+                    <el-option
+                      v-for="brand in brandOptions"
+                      :key="brand.value"
+                      :label="brand.label"
+                      :value="brand.value"
+                    />
+                  </el-select>
+                </el-form-item>
+                
+                <el-form-item label="品牌ID" required>
+                  <el-input 
+                    v-model="importBrandForm.品牌ID" 
+                    placeholder="品牌ID将自动填充"
+                    readonly
+                  />
+                </el-form-item>
+              </el-form>
+              
+              <div class="step-actions">
+                <el-button @click="importStep = 0">上一步</el-button>
+                <el-button 
+                  type="primary" 
+                  @click="proceedToPreview"
+                  :disabled="!importBrandForm.品牌 || !importBrandForm.品牌ID"
+                >
+                  下一步
+                </el-button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 步骤3: 数据预览 -->
+          <div v-if="importStep === 2" class="step-3">
             <div class="preview-header">
               <h4>数据预览 (共{{ previewData.length }}条记录)</h4>
               <el-button type="primary" @click="handleImport" :loading="importing">
@@ -426,16 +450,12 @@
             
             <el-table :data="previewData.slice(0, 10)" border max-height="400">
               <el-table-column prop="品牌" label="品牌" width="100" />
-              <el-table-column prop="品牌ID" label="品牌ID" width="100" />
               <el-table-column prop="用户ID" label="用户ID" width="100" />
-              <el-table-column prop="昵称" label="昵称" width="100" />
-              <el-table-column prop="头像" label="头像" width="120" />
               <el-table-column prop="排序" label="排序" width="80" />
               <el-table-column prop="所属用户" label="所属用户" width="100" />
               <el-table-column prop="所属店铺" label="所属店铺" width="100" />
               <el-table-column prop="渠道" label="渠道" width="100" />
               <el-table-column prop="参与统计" label="参与统计" width="100" />
-              <el-table-column prop="AZ_批次号" label="AZ批次号" width="120" />
             </el-table>
             
             <div v-if="previewData.length > 10" class="preview-tip">
@@ -443,8 +463,8 @@
             </div>
           </div>
           
-          <!-- 步骤3: 导入完成 -->
-          <div v-if="importStep === 2" class="step-3">
+          <!-- 步骤4: 导入完成 -->
+          <div v-if="importStep === 3" class="step-4">
             <el-result
               :icon="importResult.success ? 'success' : 'error'"
               :title="importResult.success ? '导入成功' : '导入失败'"
@@ -469,16 +489,82 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useKosListStore } from '@/stores/kosList'
+import { useBrandManagementStore } from '@/stores/brandManagement'
 import { MessageUtils, FormUtils, DataUtils } from '@/utils/common'
 import { STATUS } from '@/utils/supabase'
 import { ExcelUtils } from '@/utils/excel'
 import * as XLSX from 'xlsx'
 
 const kosListStore = useKosListStore()
+const brandManagementStore = useBrandManagementStore()
 
 // 响应式数据
 const loading = computed(() => kosListStore.loading)
-const kosList = computed(() => kosListStore.kosList)
+
+// 品牌选项
+const brandOptions = computed(() => {
+  return brandManagementStore.brands.map(brand => ({
+    label: brand.品牌,
+    value: brand.品牌
+  }))
+})
+
+// 品牌选择变化处理
+const onBrandChange = (brandName) => {
+  const brand = brandManagementStore.brands.find(b => b.品牌 === brandName)
+  if (brand) {
+    formData.品牌ID = brand.ID
+  }
+}
+
+// 导入品牌选择变化处理
+const onImportBrandChange = (brandName) => {
+  const brand = brandManagementStore.brands.find(b => b.品牌 === brandName)
+  if (brand) {
+    importBrandForm.品牌ID = brand.ID
+  }
+}
+
+// 进入预览步骤
+const proceedToPreview = () => {
+  // 为所有预览数据设置统一的品牌信息
+  previewData.value = previewData.value.map(item => ({
+    ...item,
+    品牌: importBrandForm.品牌,
+    品牌ID: importBrandForm.品牌ID
+  }))
+  importStep.value = 2
+}
+// KOS列表，确保按排序字段排序，空值排在最后
+const kosList = computed(() => {
+  return [...kosListStore.kosList].sort((a, b) => {
+    const sortA = a.排序 === null || a.排序 === undefined || a.排序 === '' ? null : parseInt(a.排序)
+    const sortB = b.排序 === null || b.排序 === undefined || b.排序 === '' ? null : parseInt(b.排序)
+    
+    // 如果两个都是空值，按品牌ID排序
+    if (sortA === null && sortB === null) {
+      return (a.品牌ID || '').localeCompare(b.品牌ID || '')
+    }
+    
+    // 如果只有A是空值，A排在后面
+    if (sortA === null) {
+      return 1
+    }
+    
+    // 如果只有B是空值，B排在后面
+    if (sortB === null) {
+      return -1
+    }
+    
+    // 两个都不是空值，按数值排序
+    if (sortA !== sortB) {
+      return sortA - sortB
+    }
+    
+    // 如果排序相同，按品牌ID排序
+    return (a.品牌ID || '').localeCompare(b.品牌ID || '')
+  })
+})
 const total = computed(() => kosListStore.total)
 const currentPage = computed({
   get: () => kosListStore.currentPage,
@@ -495,7 +581,7 @@ const offlineCount = computed(() => kosListStore.offlineCount)
 // 搜索表单
 const searchForm = reactive({
   search: '',
-  channel: '',
+  brandId: '',
   status: ''
 })
 
@@ -514,51 +600,34 @@ const previewData = ref([])
 const importing = ref(false)
 const importResult = ref({ success: false, message: '' })
 
+// 导入品牌表单
+const importBrandForm = reactive({
+  品牌: '',
+  品牌ID: ''
+})
+
 // 表单数据
 const formData = reactive({
   品牌: '',
   品牌ID: '',
   用户ID: '',
-  昵称: '',
-  头像: '',
   排序: 1,
   所属用户: '',
   所属店铺: '',
   渠道: '',
-  参与统计: STATUS.ONLINE,
-  AZ_批次号: ''
+  参与统计: STATUS.ONLINE
 })
 
 // 表单验证规则
 const formRules = {
   品牌: [
-    { required: true, message: '请输入品牌名称', trigger: 'blur' }
+    { required: true, message: '请选择品牌', trigger: 'change' }
   ],
   品牌ID: [
     { required: true, message: '请输入品牌ID', trigger: 'blur' }
   ],
   用户ID: [
     { required: true, message: '请输入用户ID', trigger: 'blur' }
-  ],
-  AZ_批次号: [
-    { required: true, message: '请输入AZ批次号', trigger: 'blur' }
-  ],
-  头像: [
-    { 
-      validator: (rule, value, callback) => {
-        if (!value || value.trim() === '') {
-          callback() // 空值通过验证
-        } else {
-          const error = FormUtils.validateUrl(value)
-          if (error) {
-            callback(new Error(error))
-          } else {
-            callback()
-          }
-        }
-      }, 
-      trigger: 'blur' 
-    }
   ]
 }
 
@@ -575,14 +644,22 @@ const fetchData = async () => {
 }
 
 const handleSearch = () => {
-  kosListStore.setSearchParams(searchForm)
+  // 将品牌名称转换为品牌ID
+  const searchParams = { ...searchForm }
+  if (searchForm.brandId) {
+    const brand = brandManagementStore.brands.find(b => b.品牌 === searchForm.brandId)
+    if (brand) {
+      searchParams.brandId = brand.ID
+    }
+  }
+  kosListStore.setSearchParams(searchParams)
   fetchData()
 }
 
 const handleReset = () => {
   Object.assign(searchForm, {
     search: '',
-    channel: '',
+    brandId: '',
     status: ''
   })
   kosListStore.setSearchParams(searchForm)
@@ -611,7 +688,7 @@ const handleEdit = (row) => {
 
 const handleDelete = async (row) => {
   try {
-    await MessageUtils.confirmDelete(`KOS "${row.昵称 || row.用户ID}"`)
+    await MessageUtils.confirmDelete(`KOS "${row.用户ID}"`)
     await kosListStore.deleteKos(row.品牌ID, row.用户ID)
     MessageUtils.success('删除成功')
     fetchData()
@@ -627,7 +704,7 @@ const handleToggleStatus = async (row) => {
     const newStatus = row.参与统计 === STATUS.ONLINE ? STATUS.OFFLINE : STATUS.ONLINE
     const statusText = newStatus === STATUS.ONLINE ? '上线' : '下线'
     
-    await MessageUtils.confirm(`确定要将KOS "${row.昵称 || row.用户ID}" ${statusText}吗？`)
+    await MessageUtils.confirm(`确定要将KOS "${row.用户ID}" ${statusText}吗？`)
     await kosListStore.updateKos(row.品牌ID, row.用户ID, { 参与统计: newStatus })
     MessageUtils.success(`${statusText}成功`)
     fetchData()
@@ -725,34 +802,15 @@ const handleDialogClose = () => {
     品牌: '',
     品牌ID: '',
     用户ID: '',
-    昵称: '',
-    头像: '',
     排序: 1,
     所属用户: '',
     所属店铺: '',
     渠道: '',
-    参与统计: STATUS.ONLINE,
-    AZ_批次号: ''
+    参与统计: STATUS.ONLINE
   })
   formRef.value?.resetFields()
 }
 
-const handleAvatarError = (event) => {
-  // 静默处理头像加载失败，不显示警告
-  // 让默认头像显示即可
-  console.log('头像加载失败，使用默认头像')
-}
-
-// 验证头像URL是否有效
-const isValidAvatarUrl = (url) => {
-  if (!url) return false
-  try {
-    const urlObj = new URL(url)
-    return urlObj.protocol === 'http:' || urlObj.protocol === 'https:'
-  } catch {
-    return false
-  }
-}
 
 const formatDateTime = DataUtils.formatDateTime
 
@@ -760,7 +818,7 @@ const formatDateTime = DataUtils.formatDateTime
 const handleFileChange = async (file) => {
   try {
     const excelData = await ExcelUtils.parseExcelFile(file.raw)
-    const headers = ['品牌', '品牌ID', '用户ID', '昵称', '头像', '排序', '所属用户', '所属店铺', '渠道', '参与统计', 'AZ_批次号']
+    const headers = ['用户ID', '排序', '所属用户', '所属店铺', '渠道', '参与统计']
     
     const validation = ExcelUtils.validateKosExcelData(excelData, headers)
     if (!validation.isValid) {
@@ -801,7 +859,7 @@ const handleImport = async () => {
       success: true,
       message: `成功导入${previewData.value.length}条记录`
     }
-    importStep.value = 2
+    importStep.value = 3
     
     MessageUtils.success('导入成功')
     fetchData()
@@ -810,7 +868,7 @@ const handleImport = async () => {
       success: false,
       message: error.message
     }
-    importStep.value = 2
+    importStep.value = 3
     MessageUtils.error(error.message)
   } finally {
     importing.value = false
@@ -825,25 +883,24 @@ const resetImport = () => {
   importStep.value = 0
   previewData.value = []
   importResult.value = { success: false, message: '' }
+  importBrandForm.品牌 = ''
+  importBrandForm.品牌ID = ''
   uploadRef.value?.clearFiles()
 }
 
 const downloadTemplate = () => {
   const templateData = [
-    ['品牌', '品牌ID', '用户ID', '昵称', '头像', '排序', '所属用户', '所属店铺', '渠道', '参与统计', 'AZ_批次号'],
-    ['示例品牌', '001', '1001', '张三', 'https://example.com/avatar.jpg', '1', '李四', '店铺A', '小红书', '1', 'AZ20240101001']
+    ['用户ID', '排序', '所属用户', '所属店铺', '渠道', '参与统计'],
+    ['1001', '1', '李四', '店铺A', '小红书', '1']
   ]
   
-  const worksheet = XLSX.utils.aoa_to_sheet(templateData)
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'KOS列表模板')
-  
-  XLSX.writeFile(workbook, 'KOS列表导入模板.xlsx')
+  ExcelUtils.downloadTemplate(templateData, 'KOS列表导入模板.xlsx', 'KOS列表模板')
   MessageUtils.success('模板下载成功')
 }
 
 // 生命周期
-onMounted(() => {
+onMounted(async () => {
+  await brandManagementStore.loadBrands()
   fetchData()
 })
 </script>
@@ -1073,5 +1130,29 @@ onMounted(() => {
 
 :deep(.el-pagination) {
   justify-content: center;
+}
+
+.brand-selection {
+  padding: 20px;
+}
+
+.brand-selection h4 {
+  margin-bottom: 10px;
+  color: #303133;
+}
+
+.brand-selection p {
+  margin-bottom: 20px;
+  color: #606266;
+  font-size: 14px;
+}
+
+.step-actions {
+  margin-top: 30px;
+  text-align: right;
+}
+
+.step-actions .el-button {
+  margin-left: 10px;
 }
 </style>

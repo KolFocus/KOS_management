@@ -43,7 +43,34 @@ export const useKosListStore = defineStore('kosList', {
         }
         
         const result = await KosListAPI.getKosList(queryParams)
-        this.kosList = result.data
+        // 确保数据按排序字段从小到大排序，空值排在最后
+        this.kosList = (result.data || []).sort((a, b) => {
+          const sortA = a.排序 === null || a.排序 === undefined || a.排序 === '' ? null : parseInt(a.排序)
+          const sortB = b.排序 === null || b.排序 === undefined || b.排序 === '' ? null : parseInt(b.排序)
+          
+          // 如果两个都是空值，按品牌ID排序
+          if (sortA === null && sortB === null) {
+            return (a.品牌ID || '').localeCompare(b.品牌ID || '')
+          }
+          
+          // 如果只有A是空值，A排在后面
+          if (sortA === null) {
+            return 1
+          }
+          
+          // 如果只有B是空值，B排在后面
+          if (sortB === null) {
+            return -1
+          }
+          
+          // 两个都不是空值，按数值排序
+          if (sortA !== sortB) {
+            return sortA - sortB
+          }
+          
+          // 如果排序相同，按品牌ID排序
+          return (a.品牌ID || '').localeCompare(b.品牌ID || '')
+        })
         this.total = result.total
         this.currentPage = result.page
         

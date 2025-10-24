@@ -51,6 +51,16 @@
         </div>
         
         <div class="nav-right">
+          <!-- 品牌关联按钮 -->
+          <el-button 
+            type="primary" 
+            @click="showBrandManagement"
+            class="brand-btn"
+          >
+            <el-icon><Connection /></el-icon>
+            品牌关联
+          </el-button>
+          
           <el-dropdown @command="handleCommand">
             <span class="user-info">
               <el-avatar :size="32" :src="authStore.userAvatar">
@@ -84,6 +94,17 @@
         <router-view />
       </div>
     </div>
+
+    <!-- 品牌管理对话框 -->
+    <el-dialog
+      v-model="brandDialogVisible"
+      title="关联管理"
+      width="90%"
+      :close-on-click-modal="false"
+      class="brand-management-dialog"
+    >
+      <BrandManagement />
+    </el-dialog>
   </div>
 </template>
 
@@ -92,6 +113,7 @@ import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { MessageUtils } from '@/utils/common'
+import BrandManagement from './BrandManagement.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -99,6 +121,7 @@ const authStore = useAuthStore()
 
 // 响应式数据
 const sidebarCollapsed = ref(false)
+const brandDialogVisible = ref(false)
 
 // 计算属性
 const activeMenu = computed(() => route.path)
@@ -107,6 +130,10 @@ const currentRoute = computed(() => route)
 // 方法
 const toggleSidebar = () => {
   sidebarCollapsed.value = !sidebarCollapsed.value
+}
+
+const showBrandManagement = () => {
+  brandDialogVisible.value = true
 }
 
 const handleCommand = (command) => {
@@ -244,6 +271,11 @@ const handleCommand = (command) => {
 .nav-right {
   display: flex;
   align-items: center;
+  gap: 12px;
+}
+
+.brand-btn {
+  margin-right: 8px;
 }
 
 .user-info {
@@ -330,6 +362,17 @@ const handleCommand = (command) => {
 
 :deep(.el-scrollbar__thumb:hover) {
   background-color: rgba(144, 147, 153, 0.5);
+}
+
+/* 品牌管理对话框样式 */
+:deep(.brand-management-dialog .el-dialog__body) {
+  padding: 0;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+:deep(.brand-management-dialog .el-dialog) {
+  margin-top: 5vh;
 }
 </style>
 

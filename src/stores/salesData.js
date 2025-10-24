@@ -102,12 +102,12 @@ export const useSalesDataStore = defineStore('salesData', {
     },
     
     // 更新销售数据
-    async updateSalesData(brandId, cycleType, shortDate, employeeName, storeCode, updateData) {
+    async updateSalesData(brandId, cycleType, date, employeeName, storeCode, updateData) {
       try {
         const updatedData = await SalesDataAPI.updateSalesData(
           brandId,
           cycleType,
-          shortDate,
+          date,
           employeeName,
           storeCode,
           updateData
@@ -115,7 +115,7 @@ export const useSalesDataStore = defineStore('salesData', {
         const index = this.salesDataList.findIndex(item => 
           item.品牌ID === brandId &&
           item.周期类型 === cycleType &&
-          item.短日期 === shortDate &&
+          item.日期 === date &&
           item.员工姓名 === employeeName &&
           item.店铺编号 === storeCode
         )
@@ -130,19 +130,19 @@ export const useSalesDataStore = defineStore('salesData', {
     },
     
     // 删除销售数据
-    async deleteSalesData(brandId, cycleType, shortDate, employeeName, storeCode) {
+    async deleteSalesData(brandId, cycleType, date, employeeName, storeCode) {
       try {
         await SalesDataAPI.deleteSalesData(
           brandId,
           cycleType,
-          shortDate,
+          date,
           employeeName,
           storeCode
         )
         this.salesDataList = this.salesDataList.filter(item => 
           !(item.品牌ID === brandId &&
             item.周期类型 === cycleType &&
-            item.短日期 === shortDate &&
+            item.日期 === date &&
             item.员工姓名 === employeeName &&
             item.店铺编号 === storeCode)
         )
