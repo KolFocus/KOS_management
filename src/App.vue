@@ -142,3 +142,23 @@ html, body {
   transform: translateX(100%);
 }
 </style>
+
+<!-- 全局覆盖：强制移除 Element Plus 内联子菜单白色背景 -->
+<style>
+.el-menu--inline,
+.el-sub-menu .el-menu {
+  background-color: #2b394a !important; /* 二级更暗一档 */
+}
+
+.el-sub-menu__title,
+.el-menu-item {
+  background-color: #304156 !important; /* 一级保持 */
+  color: #bfcbd9 !important;
+}
+
+.el-menu-item:hover,
+.el-menu-item.is-active {
+  background-color: #409eff !important;
+  color: #fff !important;
+}
+</style>

@@ -34,6 +34,17 @@
           <el-icon><TrendCharts /></el-icon>
           <template #title>KOS销售数据管理</template>
         </el-menu-item>
+
+        <el-sub-menu index="analysis">
+          <template #title>
+            <el-icon><DataAnalysis /></el-icon>
+            <span>分析管理</span>
+          </template>
+          <el-menu-item index="/retail-analysis">
+            <el-icon><PieChart /></el-icon>
+            <template #title>零售分析</template>
+          </el-menu-item>
+        </el-sub-menu>
       </el-menu>
     </div>
     
@@ -373,6 +384,109 @@ const handleCommand = (command) => {
 
 :deep(.brand-management-dialog .el-dialog) {
   margin-top: 5vh;
+}
+
+/* 统一一级菜单（子菜单标题）样式 */
+:deep(.sidebar-menu .el-sub-menu__title) {
+  color: #bfcbd9;
+  font-size: 14px;
+  font-weight: 600;
+  padding-left: 20px; /* 与左侧菜单项对齐 */
+}
+
+:deep(.sidebar-menu .el-sub-menu__title:hover) {
+  background-color: #263445;
+  color: #fff;
+}
+
+:deep(.sidebar-menu .el-sub-menu__title.is-active) {
+  background-color: #409eff;
+  color: #fff;
+}
+
+:deep(.sidebar-menu .el-sub-menu__title .el-icon) {
+  margin-right: 8px;
+}
+
+/* 统一二级菜单（子菜单中的项）默认/悬浮/选中态样式 */
+::deep(.sidebar-menu .el-sub-menu .el-menu-item) {
+  background-color: #2b394a; /* 二级更暗一档 */
+  color: #bfcbd9;           /* 与一级菜单未选中一致 */
+}
+
+::deep(.sidebar-menu .el-sub-menu .el-menu-item:hover) {
+  background-color: #263445; /* 悬浮与现有规则一致 */
+  color: #fff;
+}
+
+::deep(.sidebar-menu .el-sub-menu .el-menu-item.is-active) {
+  background-color: #409eff; /* 选中高亮色保持一致 */
+  color: #fff;
+}
+
+/* 调整二级菜单的内边距与对齐，增强可读性 */
+::deep(.sidebar-menu .el-sub-menu .el-menu-item) {
+  padding-left: 40px; /* 在默认缩进基础上略增，视觉分级更清晰 */
+}
+
+/* 侧边栏配色统一（Element Plus 菜单主题变量） */
+::deep(.sidebar-menu) {
+  --el-menu-bg-color: #304156;
+  --el-menu-text-color: #bfcbd9;
+  --el-menu-active-color: #ffffff;
+  --el-menu-hover-bg-color: #263445;
+}
+
+/* 二级菜单项默认/悬浮/选中态与整体一致 */
+::deep(.sidebar-menu .el-sub-menu .el-menu-item) {
+  background-color: var(--el-menu-bg-color);
+  color: var(--el-menu-text-color);
+}
+
+::deep(.sidebar-menu .el-sub-menu .el-menu-item:hover) {
+  background-color: var(--el-menu-hover-bg-color);
+  color: var(--el-menu-active-color);
+}
+
+::deep(.sidebar-menu .el-sub-menu .el-menu-item.is-active) {
+  background-color: #409eff;
+  color: #ffffff;
+}
+
+/* 子菜单标题颜色保持一致并增强可读性 */
+::deep(.sidebar-menu .el-sub-menu__title) {
+  color: var(--el-menu-text-color);
+}
+
+::deep(.sidebar-menu .el-sub-menu.is-opened > .el-sub-menu__title) {
+  background-color: var(--el-menu-hover-bg-color);
+  color: var(--el-menu-active-color);
+}
+
+/* 移除二级菜单（内联菜单）白色背景，统一为侧栏深色 */
+::deep(.sidebar-menu .el-menu--inline) {
+  background-color: #2b394a !important;
+}
+
+/* 某些版本子菜单内部再嵌套一层菜单，需要同步覆盖 */
+::deep(.sidebar-menu .el-sub-menu .el-menu) {
+  background-color: #2b394a !important;
+}
+
+/* 确保二级菜单项始终用深色底，避免继承白色 */
+::deep(.sidebar-menu .el-sub-menu .el-menu-item) {
+  background-color: #2b394a !important;
+  color: #bfcbd9;
+}
+
+::deep(.sidebar-menu .el-sub-menu .el-menu-item:hover) {
+  background-color: #263445 !important;
+  color: #fff;
+}
+
+::deep(.sidebar-menu .el-sub-menu .el-menu-item.is-active) {
+  background-color: #409eff !important;
+  color: #fff;
 }
 </style>
 

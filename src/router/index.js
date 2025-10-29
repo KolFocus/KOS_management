@@ -45,6 +45,15 @@ const router = createRouter({
       }
     },
     {
+      path: '/retail-analysis',
+      name: 'RetailAnalysis',
+      component: () => import('@/views/RetailAnalysis.vue'),
+      meta: {
+        title: '零售分析',
+        requiresAuth: true
+      }
+    },
+    {
       path: '/profile',
       name: 'Profile',
       component: () => import('@/views/Profile.vue'),
