@@ -1,5 +1,21 @@
 import * as XLSX from 'xlsx'
 
+// 导出销售数据为Excel
+export const exportToExcel = (data, filename = '数据') => {
+  const headers = Object.keys(data[0] || {})
+  
+  const excelData = [
+    headers,
+    ...data.map(item => headers.map(header => item[header] || ''))
+  ]
+  
+  const worksheet = XLSX.utils.aoa_to_sheet(excelData)
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, worksheet, '数据')
+  
+  XLSX.writeFile(workbook, `${filename}_${new Date().toISOString().split('T')[0]}.xlsx`)
+}
+
 // Excel导入导出工具
 export class ExcelUtils {
   // 解析Excel文件

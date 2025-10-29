@@ -1,5 +1,5 @@
-import { supabase, TABLES } from '@/utils/supabase'
-import { getCurrentUserId } from '@/utils/userIsolation'
+import { supabase, TABLES } from '../utils/supabase'
+import { getCurrentUserId } from '../utils/userIsolation'
 
 // KOS销售数据管理API
 export class SalesDataAPI {
