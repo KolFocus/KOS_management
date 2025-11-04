@@ -15,7 +15,8 @@ import {
   Upload,
   Row,
   Col,
-  Statistic
+  Statistic,
+  ConfigProvider
 } from 'antd'
 import { 
   PlusOutlined, 
@@ -28,8 +29,9 @@ import {
 } from '@ant-design/icons'
 import { useSalesDataStore } from '../stores/salesDataStore'
 import { useBrandManagementStore } from '../stores/brandManagementStore'
-import { exportToExcel } from '../utils/excel'
+import { exportToExcel, ExcelUtils } from '../utils/excel'
 import dayjs from 'dayjs'
+import zhCN from 'antd/es/locale/zh_CN'
 
 const { Option } = Select
 const { RangePicker } = DatePicker
@@ -64,6 +66,11 @@ export default function SalesData() {
   const [isEdit, setIsEdit] = useState(false)
   const [selectedRowKeys, setSelectedRowKeys] = useState([])
   const [searchForm] = Form.useForm()
+  // 导入相关
+  const [importModalVisible, setImportModalVisible] = useState(false)
+  const [importForm] = Form.useForm()
+  const [importFile, setImportFile] = useState(null)
+  const [importLoading, setImportLoading] = useState(false)
 
   // 页面加载时获取数据
   useEffect(() => {
@@ -236,7 +243,16 @@ export default function SalesData() {
 
   // 处理搜索
   const handleSearch = (values) => {
-    setSearchParams(values)
+    // 将周选择转换为周起始与周期类型
+    let params = { ...values }
+    if (values?.week) {
+      const start = dayjs(values.week).startOf('isoWeek').format('YYYY-MM-DD')
+      const end = dayjs(values.week).endOf('isoWeek').format('YYYY-MM-DD')
+      params.startDate = start
+      params.endDate = end
+      params.cycleType = 'BY_WEEK'
+    }
+    setSearchParams(params)
     fetchSalesDataList()
     fetchStatistics()
   }
@@ -266,15 +282,86 @@ export default function SalesData() {
     }
   }
 
-  // 处理Excel导入
-  const handleImport = async (file) => {
+  // 打开导入弹窗
+  const openImportModal = () => {
+    setImportModalVisible(true)
+    importForm.resetFields()
+    setImportFile(null)
+    // 设置默认品牌为第一个
+    const options = getBrandOptions()
+    if (options && options.length > 0) {
+      importForm.setFieldsValue({ brandId: options[0].value, brandName: options[0].label })
+    }
+    // 设置默认周期类型为按周，默认日期为“上周”的周一
+    const defaultCycleType = 'BY_WEEK'
+    const lastWeekMonday = dayjs().subtract(1, 'week').startOf('isoWeek')
+    importForm.setFieldsValue({
+      cycleType: defaultCycleType,
+      date: lastWeekMonday
+    })
+  }
+
+  // 选择导入文件
+  const onBeforeUploadImport = (file) => {
+    setImportFile(file)
+    message.success(`已选择文件：${file.name}`)
+    return false
+  }
+
+  // 提交导入
+  const handleSubmitImport = async () => {
     try {
-      // 这里需要实现Excel解析逻辑
-      message.success('导入成功')
-      return false // 阻止默认上传行为
+      setImportLoading(true)
+      const values = await importForm.validateFields()
+      if (!importFile) {
+        message.warning('请先选择要导入的Excel文件')
+        return
+      }
+      const excelData = await ExcelUtils.parseExcelFile(importFile)
+      console.log('导入原始Excel数据:', excelData)
+      const headers = ['员工姓名', '店铺编号', '小红书成单', '本期累计成单', '企微留资数']
+      const { isValid, errors } = ExcelUtils.validateExcelData(excelData, headers)
+      if (!isValid) {
+        message.error(errors[0] || '模板校验失败')
+        return
+      }
+      // 根据周期类型格式化日期
+      let formattedDate = ''
+      if (values.cycleType === 'BY_MONTH') {
+        // 按月：使用该月第一天
+        formattedDate = dayjs(values.date).startOf('month').format('YYYY-MM-DD')
+      } else if (values.cycleType === 'BY_WEEK') {
+        // 按周：使用周的起始日期（周一，isoWeek）
+        formattedDate = dayjs(values.date).startOf('isoWeek').format('YYYY-MM-DD')
+      } else {
+        // 按日：直接使用选择的日期
+        formattedDate = dayjs(values.date).format('YYYY-MM-DD')
+      }
+      
+      const list = ExcelUtils.convertToSalesData(excelData).map(item => ({
+        ...item,
+        品牌: values.brandName || '',
+        品牌ID: values.brandId || selectedBrandId || '',
+        周期类型: values.cycleType,
+        日期: formattedDate
+      }))
+      console.log('导入转换后的数据:', list)
+      if (list.length === 0) {
+        message.warning('没有可导入的数据')
+        return
+      }
+      await batchImportSalesData(list)
+      message.success(`成功导入 ${list.length} 条记录`)
+      setImportModalVisible(false)
+      setImportFile(null)
+      fetchSalesDataList()
+      fetchStatistics()
     } catch (error) {
-      message.error('导入失败: ' + error.message)
-      return false
+      console.error('导入流程发生错误:', error)
+      message.error('导入失败: ' + (error.message || '未知错误'))
+    }
+    finally {
+      setImportLoading(false)
     }
   }
 
@@ -331,15 +418,17 @@ export default function SalesData() {
               ))}
             </Select>
           </Form.Item>
-          <Form.Item name="cycleType">
-            <Select placeholder="周期类型" style={{ width: 120 }} allowClear>
-              <Option value="BY_WEEK">按周</Option>
-              <Option value="BY_MONTH">按月</Option>
-              <Option value="BY_DAY">按日</Option>
-            </Select>
+          {/* 周期类型固定为周 */}
+          <Form.Item label="周期类型">
+            <Input value={'按周'} disabled style={{ width: 120 }} />
           </Form.Item>
-          <Form.Item name="dateRange">
-            <RangePicker />
+          <Form.Item name="cycleType" initialValue={'BY_WEEK'} hidden>
+            <Input />
+          </Form.Item>
+          <Form.Item name="week" label="周">
+            <ConfigProvider locale={zhCN}>
+              <DatePicker picker="week" format="YYYY-第WW周" />
+            </ConfigProvider>
           </Form.Item>
           <Form.Item>
             <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>
@@ -359,15 +448,9 @@ export default function SalesData() {
           >
             导出Excel
           </Button>
-          <Upload
-            accept=".xlsx,.xls"
-            beforeUpload={handleImport}
-            showUploadList={false}
-          >
-            <Button icon={<UploadOutlined />}>
+          <Button icon={<UploadOutlined />} onClick={openImportModal}>
               导入Excel
             </Button>
-          </Upload>
           <Button icon={<ReloadOutlined />} onClick={handleRefresh}>
             刷新
           </Button>
@@ -513,6 +596,70 @@ export default function SalesData() {
           >
             <InputNumber placeholder="请输入企微留资数" style={{ width: '100%' }} min={0} />
           </Form.Item>
+        </Form>
+      </Modal>
+      {/* 导入对话框 */}
+      <Modal
+        title="导入销售数据"
+        open={importModalVisible}
+        onOk={handleSubmitImport}
+        onCancel={() => { setImportModalVisible(false); setImportFile(null) }}
+        width={520}
+        confirmLoading={importLoading}
+      >
+        <Form form={importForm} layout="vertical" initialValues={{ cycleType: 'BY_WEEK' }}>
+          <Form.Item name="brandId" label="品牌" rules={[{ required: true, message: '请选择品牌' }]}> 
+            <Select 
+              placeholder="选择品牌" 
+              options={getBrandOptions()}
+              onChange={(val, option) => importForm.setFieldsValue({ brandName: option?.label })}
+            />
+          </Form.Item>
+          <Form.Item name="brandName" hidden>
+            <Input />
+          </Form.Item>
+          {/* 周期类型固定为按周 */}
+          <Form.Item name="cycleType" label="周期类型">
+            <Input value={'按周'} disabled />
+          </Form.Item>
+          <Form.Item name="cycleType" hidden>
+            <Input value="BY_WEEK" />
+          </Form.Item>
+          <Form.Item 
+            name="date" 
+            label="日期（按周）" 
+            rules={[{ required: true, message: '请选择周' }]}
+          > 
+            <ConfigProvider locale={zhCN}>
+              <DatePicker 
+                picker="week"
+                style={{ width: '100%' }}
+                format={(value) => {
+                  if (!value) return ''
+                  const start = dayjs(value).startOf('isoWeek')
+                  const end = dayjs(value).endOf('isoWeek')
+                  return `${start.format('YYYY-MM-DD')} ~ ${end.format('YYYY-MM-DD')}`
+                }}
+                onChange={(date) => {
+                  if (date) {
+                    const weekStart = dayjs(date).startOf('isoWeek') // 周一（北京时间）
+                    importForm.setFieldsValue({ date: weekStart })
+                  }
+                }}
+              />
+            </ConfigProvider>
+          </Form.Item>
+          <Form.Item label="Excel 文件" required>
+            <Upload accept=".xlsx,.xls" beforeUpload={onBeforeUploadImport} showUploadList={false}>
+              <Button icon={<UploadOutlined />}>选择文件</Button>
+            </Upload>
+            <div style={{ marginTop: 8, color: '#666' }}>
+              {importFile ? `已选择：${importFile.name}` : '未选择文件'}
+            </div>
+          </Form.Item>
+          <div style={{ color: '#999' }}>
+            模板字段：员工姓名、店铺编号、小红书成单、本期累计成单、企微留资数。品牌/周期/日期在此弹窗选择。
+          </div>
         </Form>
       </Modal>
     </div>

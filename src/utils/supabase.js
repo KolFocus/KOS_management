@@ -8,7 +8,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 // 数据库表名常量
 export const TABLES = {
   KOS_LIST: '配置_小红书专业号_kos列表',
-  SALES_DATA: '品牌离线导入_kos销售数据'
+  SALES_DATA: '品牌离线导入_kos销售数据',
+  KOS_ACCOUNT: '小红书专业号_kos账号数据',
+  KOS_LEADS: '小红书专业号_kos线索统计'
 }
 
 // 状态常量

@@ -62,8 +62,19 @@ export default function App() {
   }, [location.pathname])
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Sider breakpoint="lg" collapsedWidth={64}>
+    <Layout style={{ height: '100vh', overflow: 'hidden' }}>
+      <Sider 
+        breakpoint="lg" 
+        collapsedWidth={64}
+        style={{
+          position: 'fixed',
+          left: 0,
+          top: 0,
+          bottom: 0,
+          height: '100vh',
+          overflow: 'auto'
+        }}
+      >
         <div style={{ color: '#fff', padding: 16, fontWeight: 600 }}>KOS管理系统</div>
         <Menu
           theme="dark"
@@ -72,13 +83,27 @@ export default function App() {
           items={[
             { key: 'kos', icon: <AppstoreOutlined />, label: <Link to="/kos">KOS列表管理</Link> },
             { key: 'sales', icon: <DatabaseOutlined />, label: <Link to="/sales-data">KOS销售数据管理</Link> },
-            { key: 'analysis', icon: <BarChartOutlined />, label: <Link to="/retail-analysis">零售分析</Link> },
+            { key: 'analysis', icon: <BarChartOutlined />, label: <Link to="/retail-analysis">KOS分析</Link> },
             { key: 'brands', icon: <SettingOutlined />, label: <Link to="/brands">品牌管理</Link> }
           ]}
         />
       </Sider>
-      <Layout>
-        <Header style={{ background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingInline: 16 }}>
+      <Layout style={{ marginLeft: 200 }}>
+        <Header 
+          style={{ 
+            position: 'fixed',
+            top: 0,
+            left: 200,
+            right: 0,
+            zIndex: 1000,
+            background: '#fff', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'flex-end', 
+            paddingInline: 16,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          }}
+        >
           {user ? (
             <Space>
               <Dropdown
@@ -104,7 +129,16 @@ export default function App() {
             </Space>
           )}
         </Header>
-        <Content style={{ margin: 16 }}>
+        <Content 
+          style={{ 
+            marginTop: 64,
+            marginLeft: 16,
+            marginRight: 16,
+            marginBottom: 16,
+            overflow: 'auto',
+            height: 'calc(100vh - 64px)'
+          }}
+        >
           <Routes>
             <Route path="/" element={<KosList />} />
             <Route path="/kos" element={<KosList />} />
