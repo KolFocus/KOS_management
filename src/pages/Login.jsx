@@ -18,6 +18,15 @@ export default function Login() {
     }
   }
 
+React.useEffect(() => {
+  if (!import.meta.env.DEV) return
+  const autoEmail = import.meta.env.VITE_AUTO_LOGIN_EMAIL
+  const autoPassword = import.meta.env.VITE_AUTO_LOGIN_PASSWORD
+  if (autoEmail && autoPassword) {
+    onFinish({ email: autoEmail, password: autoPassword })
+  }
+}, [])
+
   return (
     <Card title="登录" style={{ maxWidth: 360, margin: '48px auto' }}>
       <Form layout="vertical" onFinish={onFinish}>
