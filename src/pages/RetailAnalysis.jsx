@@ -15,7 +15,7 @@ import {
   Spin,
   Select,
   Avatar,
-  Image,
+  Image as AntImage,
   Segmented
 } from 'antd'
 import { ConfigProvider } from 'antd'
@@ -61,6 +61,37 @@ const NOTE_COLUMNS = [
   { key: 'inquiryCost', title: '私信开口成本', width: 0.7 },
   { key: 'summary', title: '笔记内容总结', width: 1.5 }
 ]
+
+const PPT_HEADER_FONT_EN = 'FarnhamDisplay Regular'
+const PPT_HEADER_FONT_ZH = 'Graphik'
+
+const getPptHeaderFragments = (title) => {
+  if (!title && title !== 0) {
+    return [{ text: '', options: { fontFace: PPT_HEADER_FONT_ZH } }]
+  }
+  if (Array.isArray(title)) {
+    return title
+  }
+  const str = String(title)
+  const parts = str.split('\n')
+  if (parts.length > 1) {
+    const [enPart, ...restParts] = parts
+    const zhPart = restParts.join('\n')
+    const fragments = []
+    if (enPart) {
+      fragments.push({ text: enPart, options: { fontFace: PPT_HEADER_FONT_EN } })
+    }
+    if (zhPart) {
+      fragments.push({ text: `\n${zhPart}`, options: { fontFace: PPT_HEADER_FONT_ZH } })
+    }
+    return fragments.length ? fragments : [{ text: '', options: { fontFace: PPT_HEADER_FONT_ZH } }]
+  }
+  const isAscii = /^[\x00-\x7F]+$/.test(str.trim())
+  return [{
+    text: str,
+    options: { fontFace: isAscii ? PPT_HEADER_FONT_EN : PPT_HEADER_FONT_ZH }
+  }]
+}
 
 const chunkList = (list, size) => {
   if (!Array.isArray(list) || size <= 0) return []
@@ -147,6 +178,24 @@ const imageUrlToBase64 = async (url) => {
     console.warn(`❌ 图片加载失败: ${url.substring(0, 80)}...`, error.message)
     return null
   }
+}
+
+// 读取图片的原始宽高
+const getImageDimensions = (dataUrl) => {
+  if (!dataUrl || typeof Image === 'undefined') {
+    return Promise.resolve(null)
+  }
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => {
+      resolve({
+        width: img.naturalWidth || img.width || null,
+        height: img.naturalHeight || img.height || null
+      })
+    }
+    img.onerror = () => resolve(null)
+    img.src = dataUrl
+  })
 }
 
 // 渲染头像占位符
@@ -301,78 +350,151 @@ const addDashboardSlide = (pptx, { title, periodText, kpis, creators }) => {
       fontFace: 'Microsoft YaHei' 
     })
     
-    // 表格数据
-    const tableHeaders = [
-      'Store Code\n所属店铺',
-      'Notes Published\n发布笔记数',
-      'Engagement\n笔记互动量',
-      'Inquires Received\n私信开口数',
-      'WeCom Recruitment\n企微留资数',
-      'Turnover\n期间成交额'
+    const tableColumns = [
+      { key: 'avatar', title: 'Creator\n头像', width: 0.9, type: 'avatar' },
+      { key: 'creatorName', title: 'Creator\n达人', width: 1.2, align: 'center' },
+      { key: 'storeCode', title: 'Store Code\n所属店铺', width: 1.1 },
+      { key: 'notes', title: 'Notes Published\n发布笔记数', width: 1.0 },
+      { key: 'engagement', title: 'Engagement\n笔记互动量', width: 1.0 },
+      { key: 'inquiries', title: 'Inqures Received\n私信开口数', width: 1.0 },
+      { key: 'wecom', title: 'WeCom Recruitment\n企微留资数', width: 1.0 },
+      { key: 'turnover', title: 'Turnover\n期间成交额', width: 1.3, highlight: true }
     ]
     
-    const tableData = [tableHeaders]
-    
-    topCreators.forEach((creator) => {
-      tableData.push([
-        creator?.storeCode || '-',
-        String(creator?.notes || '0'),
-        String(creator?.engagement || '0'),
-        String(creator?.inquiries || '0'),
-        String(creator?.wecom || '0'),
-        String(creator?.turnover || '¥0')
-      ])
-    })
-    
-    // 表格宽度缩小1/5
     const tableWidth = 11.6 * 0.8  // 11.6 → 9.28
-    const headerColWidth = tableWidth / 6  // 每列平均分配：约1.55英寸
+    const totalRatio = tableColumns.reduce((sum, col) => sum + (col.width || 1), 0)
+    const colWidths = tableColumns.map(col => ((col.width || 1) / totalRatio) * tableWidth)
     
-    // 添加表格 - 所有尺寸缩小1/5
     const tableY = topY + 0.28 * 0.8  // 位置也按比例
     const headerRowH = 0.38 * 0.8     // 表头行高：0.38 → 0.304
     const dataRowH = 0.34 * 0.8       // 数据行高：0.34 → 0.272
+    const rowHeights = [headerRowH, ...Array(topCreators.length).fill(dataRowH)]
+    const headerFontSize = Math.round(7 * 0.8)  // 7 → 5.6 ≈ 6
+    const dataFontSize = Math.round(8 * 0.8)    // 8 → 6.4 ≈ 6
     
-    slide.addTable(tableData, {
+    const tableRows = []
+    tableRows.push(
+      tableColumns.map(col => ({
+        text: getPptHeaderFragments(col.title),
+        options: {
+          bold: true,
+          fontSize: headerFontSize,
+          color: '333333',
+          align: 'center',
+          valign: 'middle',
+          fill: { color: col.highlight ? 'FFD4D4' : 'F2F3F7' }
+        }
+      }))
+    )
+    
+    topCreators.forEach((creator) => {
+      const row = tableColumns.map((col) => {
+        let cellText = ''
+        switch (col.key) {
+          case 'avatar':
+            cellText = ''
+            break
+          case 'creatorName':
+            cellText = creator?.creatorName || '-'
+            break
+          case 'storeCode':
+            cellText = creator?.storeCode || '-'
+            break
+          case 'notes':
+            cellText = String(creator?.notes ?? '0')
+            break
+          case 'engagement':
+            cellText = String(creator?.engagement ?? '0')
+            break
+          case 'inquiries':
+            cellText = String(creator?.inquiries ?? '0')
+            break
+          case 'wecom':
+            cellText = String(creator?.wecom ?? '0')
+            break
+          case 'turnover':
+            cellText = String(creator?.turnover ?? '¥0')
+            break
+          default:
+            cellText = '-'
+        }
+        const cellOptions = {
+          fontSize: dataFontSize,
+          fontFace: 'Microsoft YaHei',
+          color: '000000',
+          align: col.align || 'center',
+          valign: 'middle'
+        }
+        if (col.highlight) {
+          cellOptions.fill = { color: 'FFE5E8' }
+        }
+        return { text: cellText, options: cellOptions }
+      })
+      tableRows.push(row)
+    })
+    
+    slide.addTable(tableRows, {
       x: 0.55,
       y: tableY,
       w: tableWidth,
-      fontSize: Math.round(8 * 0.8),  // 8 → 6.4 ≈ 6
-        fontFace: 'Microsoft YaHei',
-      rowH: [headerRowH, dataRowH, dataRowH, dataRowH],
-      colW: Array(6).fill(headerColWidth),  // 6列均分
-      align: 'center',
-      valign: 'middle',
+      colW: colWidths,
+      rowH: rowHeights,
       border: { pt: 0.5, color: 'DDDDDD' },
       fill: { color: 'FFFFFF' }
     })
     
-    // 表头样式（灰色背景）
-    slide.addShape(pptx.ShapeType.rect, {
-      x: 0.55,
-      y: tableY,
-      w: tableWidth,
-      h: headerRowH,
-      fill: { color: 'F2F3F7' },
-      line: { color: 'DDDDDD', width: 0.5 }
-    })
+    const avatarColIndex = tableColumns.findIndex(col => col.key === 'avatar')
+    const avatarColOffset = colWidths.slice(0, avatarColIndex).reduce((sum, w) => sum + w, 0)
+    const avatarColWidth = colWidths[avatarColIndex]
+    const avatarSize = Math.min(avatarColWidth * 0.8, dataRowH - 0.05)
+    const avatarOffsetX = (avatarColWidth - avatarSize) / 2
+    const avatarOffsetY = (dataRowH - avatarSize) / 2
     
-    // 重新添加表头文字
-    tableHeaders.forEach((header, idx) => {
-      const isLastCol = idx === tableHeaders.length - 1
-      slide.addText(header, {
-        x: 0.55 + idx * headerColWidth,
-        y: tableY,
-        w: headerColWidth,
-        h: headerRowH,
-        fontSize: Math.round(7 * 0.8),  // 7 → 5.6 ≈ 6
-        color: '333333',
-        bold: true,
-        align: 'center',
-        valign: 'middle',
-        fontFace: 'Microsoft YaHei',
-        fill: { color: isLastCol ? 'FFD4D4' : 'F2F3F7' }
-      })
+    topCreators.forEach((creator, rowIdx) => {
+      const cellY = tableY + headerRowH + rowIdx * dataRowH + avatarOffsetY
+      const cellX = 0.55 + avatarColOffset + avatarOffsetX
+      if (creator?.avatarBase64) {
+        try {
+          slide.addImage({
+            data: creator.avatarBase64,
+            x: cellX,
+            y: cellY,
+            w: avatarSize,
+            h: avatarSize,
+            rounding: true
+          })
+        } catch (e) {
+          slide.addShape(pptx.ShapeType.oval, {
+            x: cellX,
+            y: cellY,
+            w: avatarSize,
+            h: avatarSize,
+            fill: { color: 'E0E0E0' },
+            line: { color: 'CCCCCC', width: 0.5 }
+          })
+        }
+      } else {
+        slide.addShape(pptx.ShapeType.oval, {
+          x: cellX,
+          y: cellY,
+          w: avatarSize,
+          h: avatarSize,
+          fill: { color: 'E0E0E0' },
+          line: { color: 'CCCCCC', width: 0.5 }
+        })
+        slide.addText((creator?.creatorName || '?').charAt(0), {
+          x: cellX,
+          y: cellY,
+          w: avatarSize,
+          h: avatarSize,
+          fontSize: Math.round(12 * 0.8),
+          bold: true,
+          color: '666666',
+          align: 'center',
+          valign: 'middle',
+          fontFace: 'Microsoft YaHei'
+        })
+      }
     })
   }
 }
@@ -445,7 +567,7 @@ const addTableSlides = (pptx, { title, periodText, columns, rows, chunkSize, sty
       
       // 表头文字（支持多行）
       if (col.title) {
-        slide.addText(col.title, {
+        slide.addText(getPptHeaderFragments(col.title), {
           x: currentX,
           y: 1.15,
           w: colWidths[colIdx],
@@ -454,8 +576,7 @@ const addTableSlides = (pptx, { title, periodText, columns, rows, chunkSize, sty
           bold: true,
           color: '333333',
           align: 'center',
-          valign: 'middle',
-          fontFace: 'Microsoft YaHei'
+          valign: 'middle'
         })
       }
       
@@ -594,7 +715,7 @@ const addNotePerformanceSlides = (pptx, { title, periodText, columns, rows }) =>
     // 可用宽度 = 13.33 - 0.4 - 0.4 - 0.1 = 12.43"
     // 每栏宽度 = 12.43 / 2 = 6.215"
     // 额外缩小1/5后再缩小1/8：6.0" → 4.8" → 4.2"
-    const columnWidth = 6.0 * 0.7  // 6.0 → 4.2 (进一步收紧列宽)
+  const columnWidth = 6.0 * 0.7  // 6.0 → 4.2 (进一步收紧列宽)
     const leftStartX = 0.4
     const rightStartX = leftStartX + columnWidth + 0.2
     
@@ -645,7 +766,7 @@ const renderNoteColumn = (pptx, slide, { columns, data, startX, startY, columnWi
     
     // 表头文字
     if (col.title) {
-      slide.addText(col.title, {
+      slide.addText(getPptHeaderFragments(col.title), {
         x: currentX,
         y: startY,
         w: colWidths[colIdx],
@@ -655,7 +776,6 @@ const renderNoteColumn = (pptx, slide, { columns, data, startX, startY, columnWi
         color: '333333',
         align: 'center',
         valign: 'middle',
-        fontFace: 'Microsoft YaHei',
         margin: 0  // 完全移除文本框内边距
       })
     }
@@ -689,12 +809,30 @@ const renderNoteColumn = (pptx, slide, { columns, data, startX, startY, columnWi
         if (item.coverImageBase64) {
           // 如果有base64编码的封面图，使用真实图片
           try {
+            const availableWidth = colWidths[colIdx] - imagePadding * 2
+            const availableHeight = imageHeight
+            let targetWidth = availableWidth
+            let targetHeight = availableHeight
+            if (item.coverImageWidth && item.coverImageHeight) {
+              const scale = Math.min(
+                availableWidth / item.coverImageWidth,
+                availableHeight / item.coverImageHeight
+              )
+              targetWidth = item.coverImageWidth * scale
+              targetHeight = item.coverImageHeight * scale
+            }
+            const scaleDown = 0.9
+            const finalWidth = targetWidth * scaleDown
+            const finalHeight = targetHeight * scaleDown
+            const finalOffsetX = currentX + imagePadding + (availableWidth - finalWidth) / 2
+            const finalOffsetY = rowY + imagePadding + (availableHeight - finalHeight) / 2
+
             slide.addImage({
               data: item.coverImageBase64,
-              x: currentX + imagePadding,
-              y: rowY + imagePadding,
-              w: colWidths[colIdx] - imagePadding * 2,
-              h: imageHeight
+              x: finalOffsetX,
+              y: finalOffsetY,
+              w: finalWidth,
+              h: finalHeight
             })
           } catch (e) {
             // 加载失败，显示占位符
@@ -750,8 +888,16 @@ const renderNoteColumn = (pptx, slide, { columns, data, startX, startY, columnWi
           align: 'center',
           valign: 'middle',
           fontFace: 'Microsoft YaHei',
-          hyperlink: { url: item.link },
-          margin: 0  // 完全移除文本框内边距
+          margin: 0
+        })
+        slide.addShape(pptx.ShapeType.rect, {
+          x: currentX,
+          y: rowY,
+          w: colWidths[colIdx],
+          h: rowHeight,
+          fill: { color: 'FFFFFF', transparency: 100 },
+          line: { color: 'FFFFFF', transparency: 100 },
+          hyperlink: { url: item.link }
         })
       }
       // 笔记内容总结列左对齐，其他列居中
@@ -809,9 +955,18 @@ const buildPptDocument = async ({ periodText, retail, wholesale }) => {
   const retailNotesWithImages = await Promise.all(
     (retail?.notes || []).map(async (note) => {
       const coverImageBase64 = note.coverImage ? await imageUrlToBase64(note.coverImage) : null
+      let coverImageWidth = null
+      let coverImageHeight = null
+      if (coverImageBase64) {
+        const size = await getImageDimensions(coverImageBase64)
+        coverImageWidth = size?.width || null
+        coverImageHeight = size?.height || null
+      }
       return {
         ...note,
-        coverImageBase64
+        coverImageBase64,
+        coverImageWidth,
+        coverImageHeight
       }
     })
   )
@@ -831,9 +986,18 @@ const buildPptDocument = async ({ periodText, retail, wholesale }) => {
   const wholesaleNotesWithImages = await Promise.all(
     (wholesale?.notes || []).map(async (note) => {
       const coverImageBase64 = note.coverImage ? await imageUrlToBase64(note.coverImage) : null
+      let coverImageWidth = null
+      let coverImageHeight = null
+      if (coverImageBase64) {
+        const size = await getImageDimensions(coverImageBase64)
+        coverImageWidth = size?.width || null
+        coverImageHeight = size?.height || null
+      }
       return {
         ...note,
-        coverImageBase64
+        coverImageBase64,
+        coverImageWidth,
+        coverImageHeight
       }
     })
   )
@@ -1238,7 +1402,7 @@ export default function RetailAnalysis() {
       onHeaderCell: () => ({ style: { textAlign: 'center', whiteSpace: 'nowrap' } }),
       render: (imageUrl, record) => (
         <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <Image
+          <AntImage
             width={80}
             height={80}
             src={imageUrl || 'https://via.placeholder.com/80x80?text=No+Image'}
