@@ -5,7 +5,7 @@ import { getCurrentUserId } from '../utils/userIsolation'
 export class KosListAPI {
   // 获取KOS列表
   static async getKosList(params = {}) {
-    const { page = 1, pageSize = 20, search = '', brandId = '', status = '' } = params
+    const { page = 1, pageSize = 20, search = '', brandId = '', channel = '', status = '' } = params
     
     const userId = await getCurrentUserId()
     if (!userId) {
@@ -25,6 +25,10 @@ export class KosListAPI {
     // 筛选条件
     if (brandId) {
       query = query.eq('品牌ID', brandId)
+    }
+    
+    if (channel) {
+      query = query.eq('渠道', channel)
     }
     
     if (status !== '') {
@@ -196,5 +200,51 @@ export class KosListAPI {
     }
     
     return data
+  }
+  
+  // 获取KOS统计数据
+  static async getKosStatistics(params = {}) {
+    const { brandId = '', channel = '', status = '' } = params
+    
+    const userId = await getCurrentUserId()
+    if (!userId) {
+      throw new Error('用户未登录，无法获取KOS统计')
+    }
+    
+    let query = supabase
+      .from(TABLES.KOS_LIST)
+      .select('参与统计, 渠道', { count: 'exact' })
+      .eq('supabase_user_id', userId)
+    
+    // 筛选条件
+    if (brandId) {
+      query = query.eq('品牌ID', brandId)
+    }
+    
+    if (channel) {
+      query = query.eq('渠道', channel)
+    }
+    
+    if (status !== '') {
+      query = query.eq('参与统计', status)
+    }
+    
+    const { data, error, count } = await query
+    
+    if (error) {
+      throw new Error(`获取KOS统计失败: ${error.message}`)
+    }
+    
+    // 计算统计数据
+    const onlineCount = data.filter(item => item.参与统计 === 1).length
+    const offlineCount = data.filter(item => item.参与统计 === 2).length
+    const channels = [...new Set(data.map(item => item.渠道).filter(Boolean))]
+    
+    return {
+      total: count || 0,
+      onlineCount,
+      offlineCount,
+      channelCount: channels.length
+    }
   }
 }

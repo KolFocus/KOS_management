@@ -45,10 +45,10 @@ export class RetailDashboardAPI {
           }
         : {
             brand_ids: resolvedBrandIds,
-            start_date: startDate || null,
-            end_date: endDate || null,
-            channel: channel || null
-          }
+        start_date: startDate || null,
+        end_date: endDate || null,
+        channel: channel || null
+      }
       const { data: rpcData, error: rpcError } = await supabase.rpc(rpcName, rpcParams)
       if (rpcError) throw rpcError
       const row = Array.isArray(rpcData) ? rpcData[0] : rpcData
@@ -65,7 +65,7 @@ export class RetailDashboardAPI {
           for (const k of keys) {
             const lk = k.toLowerCase()
             if (lt.every(t => lk.includes(t))) return row[k]
-          }
+        }
           return undefined
         }
 
@@ -483,6 +483,61 @@ export class RetailDashboardAPI {
       console.error('获取达人表现数据失败', err)
       throw err
     }
+  }
+
+  /**
+   * 仪表盘用达人表现数据：
+   * - 起始/结束时间完全使用页面传入的时间（一般为周选择器计算出的整周）
+   * - 不做任何「本月第一周」之类的时间口径修正
+   */
+  static async getCreatorPerformanceForDashboard(params = {}) {
+    const { brandId, startDate, endDate, channel = '品牌商' } = params
+    console.log('[CreatorDashboard] 请求参数', {
+      brandId,
+      startDate,
+      endDate,
+      channel
+    })
+    return RetailDashboardAPI.getCreatorPerformance({
+      brandId,
+      startDate,
+      endDate,
+      channel
+    })
+  }
+
+  /**
+   * 导出 PPT（Retail / Wholesale Piloting Performance）用达人表现数据：
+   * - 起始时间使用「用户选择的开始日期所在月份的第一周的第一天」
+   * - 结束时间使用用户选择的结束日期
+   */
+  static async getCreatorPerformanceForExport(params = {}) {
+    const { brandId, startDate, endDate, channel = '品牌商' } = params
+
+    if (!startDate || !endDate) {
+      // 参数不完整时，直接退回空结果，避免时间计算出错
+      return []
+    }
+
+    const userStartDate = dayjs(startDate, 'YYYY.MM.DD')
+    const firstDayOfUserMonth = userStartDate.startOf('month')
+    const firstWeekStartOfUserMonth = firstDayOfUserMonth.startOf('isoWeek')
+    const creatorStartDate = firstWeekStartOfUserMonth.format('YYYY.MM.DD')
+
+    console.log('[CreatorExport] 请求参数', {
+      brandId,
+      startDate: creatorStartDate,
+      endDate,
+      channel,
+      userStartDate: startDate
+    })
+
+    return RetailDashboardAPI.getCreatorPerformance({
+      brandId,
+      startDate: creatorStartDate,
+      endDate,
+      channel
+    })
   }
 
   // 获取笔记表现数据（按笔记）

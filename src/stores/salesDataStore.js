@@ -12,8 +12,7 @@ export const useSalesDataStore = create((set, get) => ({
     search: '',
     brandId: '',
     cycleType: '',
-    startDate: '',
-    endDate: ''
+    exactDate: '' // 精确日期匹配（周的起始日期）
   },
   statistics: {
     totalOrderAmount: 0,
@@ -189,10 +188,13 @@ export const useSalesDataStore = create((set, get) => ({
   },
   
   setSearchParams: (params) => {
-    set(state => ({
-      searchParams: { ...state.searchParams, ...params },
-      currentPage: 1
-    }))
+    set(state => {
+      const newSearchParams = { ...state.searchParams, ...params }
+      return {
+        searchParams: newSearchParams,
+        currentPage: 1
+      }
+    })
   },
   
   setPagination: (page, pageSize) => {
@@ -210,8 +212,7 @@ export const useSalesDataStore = create((set, get) => ({
         search: '',
         brandId: '',
         cycleType: '',
-        startDate: '',
-        endDate: ''
+        exactDate: ''
       },
       statistics: {
         totalOrderAmount: 0,

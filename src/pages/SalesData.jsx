@@ -29,6 +29,7 @@ import {
 } from '@ant-design/icons'
 import { useSalesDataStore } from '../stores/salesDataStore'
 import { useBrandManagementStore } from '../stores/brandManagementStore'
+import { useAuthStore } from '../stores/authStore'
 import { exportToExcel, ExcelUtils } from '../utils/excel'
 import dayjs from 'dayjs'
 import zhCN from 'antd/es/locale/zh_CN'
@@ -60,6 +61,8 @@ export default function SalesData() {
   } = useSalesDataStore()
 
   const { getBrandOptions, selectedBrandId, setSelectedBrandId, loadBrands } = useBrandManagementStore()
+  const initialized = useAuthStore(state => state.initialized)
+  const user = useAuthStore(state => state.user)
 
   const [form] = Form.useForm()
   const [isModalVisible, setIsModalVisible] = useState(false)
@@ -71,18 +74,35 @@ export default function SalesData() {
   const [importForm] = Form.useForm()
   const [importFile, setImportFile] = useState(null)
   const [importLoading, setImportLoading] = useState(false)
+  const [isInitialized, setIsInitialized] = useState(false)
 
   // 页面加载时获取数据
   useEffect(() => {
-    // 确保品牌数据加载（与Vue一致：按用户隔离加载品牌）
-    loadBrands()
-    // 默认以 selectedBrandId 作为筛选
-    if (selectedBrandId) {
-      setSearchParams({ brandId: selectedBrandId })
+    if (!initialized || !user || isInitialized) return
+
+    const initData = async () => {
+      await loadBrands()
+      
+      // 如果没有选择品牌，默认选择第一个
+      const brands = getBrandOptions()
+      let currentBrandId = selectedBrandId
+      
+      if (!currentBrandId && brands.length > 0) {
+        currentBrandId = brands[0].value
+        setSelectedBrandId(currentBrandId)
+        searchForm.setFieldsValue({ brandId: currentBrandId })
+        setSearchParams({ brandId: currentBrandId })
+      } else if (currentBrandId) {
+        searchForm.setFieldsValue({ brandId: currentBrandId })
+        setSearchParams({ brandId: currentBrandId })
+      }
+      
+      await Promise.all([fetchSalesDataList(), fetchStatistics()])
+      setIsInitialized(true)
     }
-    fetchSalesDataList()
-    fetchStatistics()
-  }, [])
+
+    initData()
+  }, [initialized, user, isInitialized])
 
   // 计算默认日期
   const calculateDateByCycleType = (date, cycleType) => {
@@ -117,6 +137,11 @@ export default function SalesData() {
       dataIndex: '日期',
       key: '日期',
       width: 120,
+      render: (date) => {
+        if (!date) return '-'
+        // 确保日期格式为 YYYY-MM-DD
+        return dayjs(date).format('YYYY-MM-DD')
+      },
     },
     {
       title: '员工姓名',
@@ -242,19 +267,26 @@ export default function SalesData() {
   }
 
   // 处理搜索
-  const handleSearch = (values) => {
-    // 将周选择转换为周起始与周期类型
-    let params = { ...values }
-    if (values?.week) {
-      const start = dayjs(values.week).startOf('isoWeek').format('YYYY-MM-DD')
-      const end = dayjs(values.week).endOf('isoWeek').format('YYYY-MM-DD')
-      params.startDate = start
-      params.endDate = end
+  const handleSearch = (formValues = {}) => {
+    // Ant Design 在某些情况下不会把未变化的字段回传，这里统一从表单取值兜底
+    const values = { ...searchForm.getFieldsValue(), ...formValues }
+    const params = { ...values }
+    const weekValue = values.week
+
+    if (weekValue) {
+      const weekDayjs = dayjs(weekValue)
+      const weekStartDate = weekDayjs.startOf('isoWeek').format('YYYY-MM-DD')
+      params.exactDate = weekStartDate
       params.cycleType = 'BY_WEEK'
+    } else {
+      delete params.exactDate
     }
+
+    delete params.week
+
     setSearchParams(params)
-    fetchSalesDataList()
-    fetchStatistics()
+    fetchSalesDataList(params)
+    fetchStatistics(params)
   }
 
   // 处理分页
@@ -375,6 +407,25 @@ export default function SalesData() {
     }
   }
 
+  // 下载导入模板
+  const handleDownloadTemplate = () => {
+    try {
+      const templateData = [
+        ['员工姓名', '店铺编号', '小红书成单', '本期累计成单', '企微留资数'],
+        ['张三', 'SH001', '5000', '15000', '10'],
+        ['李四', 'BJ002', '8000', '20000', '15']
+      ]
+      ExcelUtils.downloadTemplate(
+        templateData,
+        '销售数据导入模板.xlsx',
+        '销售数据'
+      )
+      message.success('模板下载成功')
+    } catch (error) {
+      message.error('模板下载失败: ' + error.message)
+    }
+  }
+
   // 刷新数据
   const handleRefresh = () => {
     fetchSalesDataList()
@@ -425,11 +476,11 @@ export default function SalesData() {
           <Form.Item name="cycleType" initialValue={'BY_WEEK'} hidden>
             <Input />
           </Form.Item>
-          <Form.Item name="week" label="周">
-            <ConfigProvider locale={zhCN}>
+          <ConfigProvider locale={zhCN}>
+            <Form.Item name="week" label="周">
               <DatePicker picker="week" format="YYYY-第WW周" />
-            </ConfigProvider>
-          </Form.Item>
+            </Form.Item>
+          </ConfigProvider>
           <Form.Item>
             <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>
               搜索
@@ -657,8 +708,19 @@ export default function SalesData() {
               {importFile ? `已选择：${importFile.name}` : '未选择文件'}
             </div>
           </Form.Item>
-          <div style={{ color: '#999' }}>
-            模板字段：员工姓名、店铺编号、小红书成单、本期累计成单、企微留资数。品牌/周期/日期在此弹窗选择。
+          <div style={{ color: '#999', fontSize: '12px' }}>
+            <div style={{ marginBottom: 8 }}>模板字段说明：</div>
+            <div>• 员工姓名、店铺编号（必填）</div>
+            <div>• 小红书成单、本期累计成单、企微留资数（可选，默认0）</div>
+            <div style={{ marginBottom: 12 }}>• 品牌/周期/日期在上方选择器中指定</div>
+            <Button 
+              icon={<DownloadOutlined />} 
+              onClick={handleDownloadTemplate}
+              type="dashed"
+              block
+            >
+              下载导入模板
+            </Button>
           </div>
         </Form>
       </Modal>

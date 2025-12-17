@@ -1,5 +1,5 @@
 import React from 'react'
-import { Layout, Menu, theme, Space, Button, Dropdown, Avatar } from 'antd'
+import { Layout, Menu, Space, Button, Dropdown, Avatar, message } from 'antd'
 import { Link, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import {
   AppstoreOutlined,
@@ -12,54 +12,115 @@ import KosList from './pages/KosList'
 import SalesData from './pages/SalesData'
 import RetailAnalysis from './pages/RetailAnalysis'
 import Login from './pages/Login'
+import ResetPassword from './pages/ResetPassword'
 import Profile from './pages/Profile'
 import BrandManagement from './pages/BrandManagement'
 
-import { supabase } from './utils/supabase'
 import { useBrandManagementStore } from './stores/brandManagementStore'
+import { useAuthStore } from './stores/authStore'
 
 const { Header, Sider, Content } = Layout
+const AUTH_WHITELIST = ['/login', '/reset-password']
+const renderAuthLayout = (content) => (
+  <div
+    style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'linear-gradient(135deg, #0f62fe 0%, #6f20ff 100%)',
+      padding: '48px 16px'
+    }}
+  >
+    <div
+      style={{
+        width: '100%',
+        maxWidth: 1080,
+        display: 'grid',
+        gap: 32,
+        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+        alignItems: 'center'
+      }}
+    >
+      <div style={{ color: '#fff', paddingRight: 24 }}>
+        <div style={{ fontSize: 36, fontWeight: 600, marginBottom: 16 }}>KOS 管理系统</div>
+        <p style={{ fontSize: 16, lineHeight: 1.7, opacity: 0.9, marginBottom: 32 }}>
+          统一管理品牌、渠道与达人数据，实时掌握 KOS 运营指标。
+          通过 Supabase 提供的认证与数据库服务，保障数据安全与可追溯性。
+        </p>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+            gap: 16
+          }}
+        >
+          {[
+            { label: '品牌数据', value: '360+' },
+            { label: '达人账号', value: '2,400+' },
+            { label: '实时指标', value: '18 项' }
+          ].map(item => (
+            <div
+              key={item.label}
+              style={{
+                background: 'rgba(255,255,255,0.12)',
+                borderRadius: 12,
+                padding: 16
+              }}
+            >
+              <div style={{ fontSize: 22, fontWeight: 600 }}>{item.value}</div>
+              <div style={{ opacity: 0.85 }}>{item.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'center' }}>{content}</div>
+    </div>
+  </div>
+)
 
 export default function App() {
   const location = useLocation()
   const navigate = useNavigate()
-  const [user, setUser] = React.useState(null)
-  const [loading, setLoading] = React.useState(true)
-  const brandStore = useBrandManagementStore()
+  const loadBrands = useBrandManagementStore(state => state.loadBrands)
+  const user = useAuthStore(state => state.user)
+  const initialized = useAuthStore(state => state.initialized)
+  const initAuth = useAuthStore(state => state.initAuth)
+  const logout = useAuthStore(state => state.logout)
+  const initRef = React.useRef(false)
 
   React.useEffect(() => {
-    (async () => {
-      const { data } = await supabase.auth.getSession()
-      setUser(data?.session?.user || null)
-      setLoading(false)
-      if (data?.session?.user) {
-        // 登录后加载品牌列表
-        brandStore.loadBrands()
-      }
-    })()
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null)
-      if (session?.user) {
-        brandStore.loadBrands()
-      }
-    })
-    return () => { sub.subscription?.unsubscribe?.() }
-  }, [])
+    if (initRef.current) return
+    initRef.current = true
+    initAuth()
+  }, [initAuth])
+
+  React.useEffect(() => {
+    if (user) {
+      loadBrands()
+    }
+  }, [user, loadBrands])
 
   // 简单路由保护：未登录访问业务页时跳转至登录
   React.useEffect(() => {
-    if (loading) return
-    const whitelist = ['/login', '/reset-password']
-    if (!user && !whitelist.includes(location.pathname)) {
+    if (!initialized) return
+    if (!user && !AUTH_WHITELIST.includes(location.pathname)) {
       navigate('/login')
     }
-  }, [loading, user, location.pathname])
+  }, [initialized, user, location.pathname, navigate])
   const selected = React.useMemo(() => {
     if (location.pathname.startsWith('/sales-data')) return ['sales']
     if (location.pathname.startsWith('/retail-analysis')) return ['analysis']
     if (location.pathname.startsWith('/kos')) return ['kos']
     return []
   }, [location.pathname])
+
+  const isAuthRoute = AUTH_WHITELIST.includes(location.pathname)
+
+  if (isAuthRoute) {
+    const authContent = location.pathname === '/reset-password' ? <ResetPassword /> : <Login />
+    return renderAuthLayout(authContent)
+  }
 
   return (
     <Layout style={{ height: '100vh', overflow: 'hidden' }}>
@@ -111,7 +172,15 @@ export default function App() {
                   items: [
                     { key: 'profile', label: <Link to="/profile">个人资料</Link> },
                     { type: 'divider' },
-                    { key: 'logout', label: '退出登录', onClick: async () => { await supabase.auth.signOut(); navigate('/login') } }
+                    { 
+                      key: 'logout',
+                      label: '退出登录',
+                      onClick: async () => {
+                        await logout()
+                        message.success('已退出登录')
+                        navigate('/login')
+                      }
+                    }
                   ]
                 }}
               >
@@ -144,7 +213,6 @@ export default function App() {
             <Route path="/kos" element={<KosList />} />
             <Route path="/sales-data" element={<SalesData />} />
             <Route path="/retail-analysis" element={<RetailAnalysis />} />
-            <Route path="/login" element={<Login />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/brands" element={<BrandManagement />} />
           </Routes>

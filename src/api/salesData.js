@@ -11,8 +11,7 @@ export class SalesDataAPI {
       search = '', 
       brandId = '', 
       cycleType = '', 
-      startDate = '', 
-      endDate = '' 
+      exactDate = '' // 精确日期匹配（周起始日）
     } = params
     
     const userId = await getCurrentUserId()
@@ -39,34 +38,34 @@ export class SalesDataAPI {
       query = query.eq('周期类型', cycleType)
     }
     
-    if (startDate && endDate) {
-      console.log('日期范围查询:', { startDate, endDate })
-      // 先查询所有数据看看日期格式
-      const { data: allData } = await supabase
-        .from(TABLES.SALES_DATA)
-        .select('日期')
-        .limit(5)
-      console.log('数据库中的日期格式示例:', allData)
-      
-      // 尝试使用日期字段进行查询
-      query = query.gte('日期', startDate).lte('日期', endDate)
+    if (exactDate) {
+      query = query.eq('日期', exactDate)
     }
     
-    // 分页
+    // 先获取所有符合条件的数据（在前端排序/分页以确保格式一致）
+    const { data: allData, error: allError, count } = await query
+    
+    if (allError) {
+      throw new Error(`获取销售数据失败: ${allError.message}`)
+    }
+    
+    const filteredData = allData || []
+    
+    // 前端排序：将日期字符串转换为Date对象进行比较，从大到小（倒序）
+    const sortedData = filteredData.sort((a, b) => {
+      const dateA = a.日期 ? new Date(a.日期) : new Date(0)
+      const dateB = b.日期 ? new Date(b.日期) : new Date(0)
+      return dateB.getTime() - dateA.getTime() // 倒序：最新的在前
+    })
+    
+    // 前端分页
     const from = (page - 1) * pageSize
-    const to = from + pageSize - 1
-    
-    query = query.range(from, to).order('日期', { ascending: false, nullsLast: true })
-    
-    const { data, error, count } = await query
-    
-    if (error) {
-      throw new Error(`获取销售数据失败: ${error.message}`)
-    }
+    const to = from + pageSize
+    const paginatedData = sortedData.slice(from, to)
     
     return {
-      data: data || [],
-      total: count || 0,
+      data: paginatedData,
+      total: count ?? sortedData.length,
       page,
       pageSize
     }
@@ -251,18 +250,28 @@ export class SalesDataAPI {
   
   // 获取统计数据
   static async getSalesStatistics(params = {}) {
-    const { brandId = '', startDate = '', endDate = '' } = params
+    const { brandId = '', exactDate = '', cycleType = '' } = params
+    
+    const userId = await getCurrentUserId()
+    if (!userId) {
+      throw new Error('用户未登录，无法获取统计数据')
+    }
     
     let query = supabase
       .from(TABLES.SALES_DATA)
       .select('小红书成单, 本期累计成单, 企微留资数')
+      .eq('supabase_user_id', userId)
     
     if (brandId) {
       query = query.eq('品牌ID', brandId)
     }
     
-    if (startDate && endDate) {
-      query = query.gte('日期', startDate).lte('日期', endDate)
+    if (cycleType) {
+      query = query.eq('周期类型', cycleType)
+    }
+    
+    if (exactDate) {
+      query = query.eq('日期', exactDate)
     }
     
     const { data, error } = await query

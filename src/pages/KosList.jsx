@@ -12,7 +12,10 @@ import {
   message,
   Popconfirm,
   Upload,
-  Tag
+  Tag,
+  Row,
+  Col,
+  Statistic
 } from 'antd'
 import { 
   PlusOutlined, 
@@ -23,8 +26,9 @@ import {
   SearchOutlined
 } from '@ant-design/icons'
 import { useKosListStore } from '../stores/kosListStore'
+import { useBrandManagementStore } from '../stores/brandManagementStore'
 import { STATUS } from '../utils/supabase'
-import { exportToExcel } from '../utils/excel'
+import { exportToExcel, ExcelUtils } from '../utils/excel'
 
 const { Option } = Select
 
@@ -36,7 +40,9 @@ export default function KosList() {
     currentPage,
     pageSize,
     searchParams,
+    statistics,
     fetchKosList,
+    fetchStatistics,
     createKos,
     updateKos,
     deleteKos,
@@ -50,16 +56,25 @@ export default function KosList() {
     getChannelList
   } = useKosListStore()
 
+  const { getBrandOptions } = useBrandManagementStore()
+
   const [form] = Form.useForm()
   const [editForm] = Form.useForm()
   const [isModalVisible, setIsModalVisible] = useState(false)
   const [isEdit, setIsEdit] = useState(false)
   const [selectedRowKeys, setSelectedRowKeys] = useState([])
   const [searchForm] = Form.useForm()
+  
+  // 导入相关
+  const [importModalVisible, setImportModalVisible] = useState(false)
+  const [importForm] = Form.useForm()
+  const [importFile, setImportFile] = useState(null)
+  const [importLoading, setImportLoading] = useState(false)
 
   // 页面加载时获取数据
   useEffect(() => {
     fetchKosList()
+    fetchStatistics()
   }, [])
 
   // 表格列配置
@@ -165,6 +180,7 @@ export default function KosList() {
     try {
       await deleteKos(record.品牌ID, record.用户ID)
       message.success('删除成功')
+      fetchStatistics()
     } catch (error) {
       message.error('删除失败: ' + error.message)
     }
@@ -186,6 +202,7 @@ export default function KosList() {
       
       setIsModalVisible(false)
       form.resetFields()
+      fetchStatistics()
     } catch (error) {
       message.error('操作失败: ' + error.message)
     }
@@ -195,6 +212,7 @@ export default function KosList() {
   const handleSearch = (values) => {
     setSearchParams(values)
     fetchKosList()
+    fetchStatistics()
   }
 
   // 处理分页
@@ -217,6 +235,7 @@ export default function KosList() {
       await batchUpdateStatus(selectedKos, status)
       message.success('批量更新状态成功')
       setSelectedRowKeys([])
+      fetchStatistics()
     } catch (error) {
       message.error('批量更新失败: ' + error.message)
     }
@@ -235,20 +254,80 @@ export default function KosList() {
       await batchDeleteKos(selectedKos)
       message.success('批量删除成功')
       setSelectedRowKeys([])
+      fetchStatistics()
     } catch (error) {
       message.error('批量删除失败: ' + error.message)
     }
   }
 
-  // 处理Excel导入
-  const handleImport = async (file) => {
+  // 打开导入弹窗
+  const openImportModal = () => {
+    setImportModalVisible(true)
+    importForm.resetFields()
+    setImportFile(null)
+    // 设置默认品牌为第一个
+    const options = getBrandOptions()
+    if (options && options.length > 0) {
+      importForm.setFieldsValue({ brandId: options[0].value, brandName: options[0].label })
+    }
+  }
+
+  // 选择导入文件
+  const onBeforeUploadImport = (file) => {
+    setImportFile(file)
+    message.success(`已选择文件：${file.name}`)
+    return false
+  }
+
+  // 提交导入
+  const handleSubmitImport = async () => {
     try {
-      // 这里需要实现Excel解析逻辑
-      message.success('导入成功')
-      return false // 阻止默认上传行为
+      setImportLoading(true)
+      const values = await importForm.validateFields()
+      
+      if (!importFile) {
+        message.warning('请先选择要导入的Excel文件')
+        return
+      }
+      
+      // 解析Excel文件
+      const excelData = await ExcelUtils.parseExcelFile(importFile)
+      console.log('导入原始Excel数据:', excelData)
+      
+      // 验证Excel数据
+      const headers = ['用户ID', '排序', '所属用户', '所属店铺', '渠道', '参与统计']
+      const { isValid, errors } = ExcelUtils.validateKosExcelData(excelData, headers)
+      
+      if (!isValid) {
+        message.error(errors[0] || '模板校验失败')
+        return
+      }
+      
+      // 转换数据格式
+      const list = ExcelUtils.convertToKosData(excelData).map(item => ({
+        ...item,
+        品牌: values.brandName || '',
+        品牌ID: values.brandId || ''
+      }))
+      
+      console.log('导入转换后的数据:', list)
+      
+      if (list.length === 0) {
+        message.warning('没有可导入的数据')
+        return
+      }
+      
+      // 批量导入
+      await batchImportKos(list)
+      message.success(`成功导入 ${list.length} 条记录`)
+      setImportModalVisible(false)
+      setImportFile(null)
+      fetchStatistics()
     } catch (error) {
-      message.error('导入失败: ' + error.message)
-      return false
+      console.error('导入流程发生错误:', error)
+      message.error('导入失败: ' + (error.message || '未知错误'))
+    } finally {
+      setImportLoading(false)
     }
   }
 
@@ -259,6 +338,25 @@ export default function KosList() {
       message.success('导出成功')
     } catch (error) {
       message.error('导出失败: ' + error.message)
+    }
+  }
+
+  // 下载导入模板
+  const handleDownloadTemplate = () => {
+    try {
+      const templateData = [
+        ['用户ID', '排序', '所属用户', '所属店铺', '渠道', '参与统计'],
+        ['user123', '1', '张三', '北京旗舰店', '品牌商', '1'],
+        ['user456', '2', '李四', '上海旗舰店', '经销商', '1']
+      ]
+      ExcelUtils.downloadTemplate(
+        templateData,
+        'KOS导入模板.xlsx',
+        'KOS数据'
+      )
+      message.success('模板下载成功')
+    } catch (error) {
+      message.error('模板下载失败: ' + error.message)
     }
   }
 
@@ -318,15 +416,9 @@ export default function KosList() {
           >
             导出Excel
           </Button>
-          <Upload
-            accept=".xlsx,.xls"
-            beforeUpload={handleImport}
-            showUploadList={false}
-          >
-            <Button icon={<UploadOutlined />}>
-              导入Excel
-            </Button>
-          </Upload>
+          <Button icon={<UploadOutlined />} onClick={openImportModal}>
+            导入Excel
+          </Button>
           {selectedRowKeys.length > 0 && (
             <>
               <Button 
@@ -352,13 +444,36 @@ export default function KosList() {
         </Space>
 
         {/* 统计信息 */}
-        <div style={{ marginBottom: 16 }}>
-          <Space>
-            <span>总计: {total}</span>
-            <span>上线: {getOnlineCount()}</span>
-            <span>下线: {getOfflineCount()}</span>
-          </Space>
-        </div>
+        <Row gutter={16} style={{ marginBottom: 16 }}>
+          <Col span={6}>
+            <Card>
+              <Statistic title="KOS总数" value={statistics.total} />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card>
+              <Statistic 
+                title="上线数量" 
+                value={statistics.onlineCount} 
+                valueStyle={{ color: '#3f8600' }}
+              />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card>
+              <Statistic 
+                title="下线数量" 
+                value={statistics.offlineCount}
+                valueStyle={{ color: '#cf1322' }}
+              />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card>
+              <Statistic title="渠道数量" value={statistics.channelCount} />
+            </Card>
+          </Col>
+        </Row>
 
         {/* 表格 */}
         <Table
@@ -454,6 +569,56 @@ export default function KosList() {
               <Option value={STATUS.OFFLINE}>下线</Option>
             </Select>
           </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* 导入对话框 */}
+      <Modal
+        title="导入KOS数据"
+        open={importModalVisible}
+        onOk={handleSubmitImport}
+        onCancel={() => { setImportModalVisible(false); setImportFile(null) }}
+        width={520}
+        confirmLoading={importLoading}
+      >
+        <Form form={importForm} layout="vertical">
+          <Form.Item 
+            name="brandId" 
+            label="品牌" 
+            rules={[{ required: true, message: '请选择品牌' }]}
+          > 
+            <Select 
+              placeholder="选择品牌" 
+              options={getBrandOptions()}
+              onChange={(val, option) => importForm.setFieldsValue({ brandName: option?.label })}
+            />
+          </Form.Item>
+          <Form.Item name="brandName" hidden>
+            <Input />
+          </Form.Item>
+          <Form.Item label="Excel 文件" required>
+            <Upload accept=".xlsx,.xls" beforeUpload={onBeforeUploadImport} showUploadList={false}>
+              <Button icon={<UploadOutlined />}>选择文件</Button>
+            </Upload>
+            <div style={{ marginTop: 8, color: '#666' }}>
+              {importFile ? `已选择：${importFile.name}` : '未选择文件'}
+            </div>
+          </Form.Item>
+          <div style={{ color: '#999', fontSize: '12px' }}>
+            <div style={{ marginBottom: 8 }}>模板字段说明：</div>
+            <div>• 用户ID（必填）</div>
+            <div>• 排序、所属用户、所属店铺、渠道（可选）</div>
+            <div>• 参与统计：1=上线，2=下线（可选，默认1）</div>
+            <div style={{ marginBottom: 12 }}>• 品牌信息在上方选择器中指定</div>
+            <Button 
+              icon={<DownloadOutlined />} 
+              onClick={handleDownloadTemplate}
+              type="dashed"
+              block
+            >
+              下载导入模板
+            </Button>
+          </div>
         </Form>
       </Modal>
     </div>

@@ -14,6 +14,12 @@ export const useKosListStore = create((set, get) => ({
     channel: '',
     status: ''
   },
+  statistics: {
+    total: 0,
+    onlineCount: 0,
+    offlineCount: 0,
+    channelCount: 0
+  },
 
   // Getters
   getOnlineCount: () => {
@@ -160,6 +166,24 @@ export const useKosListStore = create((set, get) => ({
     }
   },
   
+  fetchStatistics: async (params = {}) => {
+    const { searchParams } = get()
+    
+    try {
+      const queryParams = {
+        ...searchParams,
+        ...params
+      }
+      
+      const stats = await KosListAPI.getKosStatistics(queryParams)
+      set({ statistics: stats })
+      return stats
+    } catch (error) {
+      console.error('获取KOS统计数据失败:', error)
+      throw error
+    }
+  },
+  
   setSearchParams: (params) => {
     set(state => ({
       searchParams: { ...state.searchParams, ...params },
@@ -182,6 +206,12 @@ export const useKosListStore = create((set, get) => ({
         search: '',
         channel: '',
         status: ''
+      },
+      statistics: {
+        total: 0,
+        onlineCount: 0,
+        offlineCount: 0,
+        channelCount: 0
       }
     })
   }

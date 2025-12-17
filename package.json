@@ -16,6 +16,7 @@
     "antd": "^5.27.6",
     "axios": "^1.13.1",
     "dayjs": "^1.11.18",
+    "pptxgenjs": "^4.0.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^6.30.1",

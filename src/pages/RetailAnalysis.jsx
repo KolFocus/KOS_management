@@ -65,6 +65,83 @@ const NOTE_COLUMNS = [
 const PPT_HEADER_FONT_EN = 'FarnhamDisplay Regular'
 const PPT_HEADER_FONT_ZH = 'Graphik'
 
+const PX_TO_INCH = 1 / 96
+const CM_TO_INCH = 0.393700787
+const pxToInch = (px) => px * PX_TO_INCH
+const cmToInch = (cm) => cm * CM_TO_INCH
+const MASTER_NAME = 'KOSMaster'
+const SLIDE_WIDTH_IN = 13.33
+const FONT_DISPLAY = 'FarnhamDisplay Regular'
+const FONT_PAGE = 'Graphik'
+const FONT_CN = 'PingFang HK'
+const CPR_TITLE = 'CPR (Cost per Recruitment)'
+const KPI_EN_LABEL_FONT_SIZE = 9
+const KPI_CN_LABEL_FONT_SIZE = 8
+const KPI_VALUE_FONT_SIZE_DEFAULT = 28
+const KPI_VALUE_FONT_SIZE_LARGE = 24
+const TABLE_HEADER_FONT_SIZE = 8
+const TABLE_BODY_FONT_SIZE = 11
+
+const KPI_CARD_START_X = pxToInch(40)
+const KPI_START_Y = pxToInch(192)
+const KPI_COLS = 6
+const KPI_CARD_WIDTH = cmToInch(4.67)
+const KPI_CARD_WIDTH_OVERRIDES = {
+  paidEngagement: cmToInch(5.37),
+  turnover: cmToInch(5.37)
+}
+
+const getCardWidth = (metric) => {
+  if (!metric) return KPI_CARD_WIDTH
+  return KPI_CARD_WIDTH_OVERRIDES[metric.key] || KPI_CARD_WIDTH
+}
+const KPI_CARD_HEIGHT = cmToInch(3.12)
+const KPI_CARD_PADDING_LEFT = cmToInch(0.23)
+const KPI_CARD_PADDING_RIGHT = cmToInch(0)
+const KPI_CARD_PADDING_TOP = cmToInch(0.36)
+const KPI_CARD_PADDING_BOTTOM = cmToInch(0.23)
+const KPI_EN_TO_CN_GAP = cmToInch(0.4)
+const KPI_CN_TO_VALUE_GAP = cmToInch(1.05)
+const KPI_VALUE_BOX_HEIGHT = cmToInch(1.3)
+const KPI_EN_FONT_SIZE = 9
+const KPI_CN_FONT_SIZE = 8
+const KPI_CARD_BORDER_COLOR = 'E6E6E6'
+const KPI_CARD_FILL = 'F4F4F4'
+const KPI_CARD_FILL_TRANSPARENCY = 0
+const KPI_TURNOVER_CARD_FILL = '#ffc3b8'
+const KPI_GAP_X = cmToInch(0.68)
+const KPI_GAP_Y = cmToInch(0.48)
+const WEEKLY_TOP_SPACING = pxToInch(36)
+const WEEKLY_LABEL_GAP = pxToInch(25)
+const WEEKLY_TABLE_WIDTH = cmToInch(31.14 + 0.7)
+const WEEKLY_TABLE_HEIGHT = cmToInch(5.37)
+const WEEKLY_HEADER_HEIGHT = WEEKLY_TABLE_HEIGHT * (36 / 148) * 0.8
+const WEEKLY_DATA_HEIGHT = (WEEKLY_TABLE_HEIGHT - WEEKLY_HEADER_HEIGHT) / 3
+const WEEKLY_TABLE_X = cmToInch(1.3)
+const WEEKLY_TABLE_Y = cmToInch(12.9)
+const WEEKLY_TITLE_X = null
+const WEEKLY_TITLE_Y = cmToInch(13.3)
+const WEEKLY_AVATAR_SIZE = cmToInch(0.94)
+const TITLE_SECTION_ORIGIN_X = pxToInch(37) + -0.06
+const TITLE_SECTION_ORIGIN_Y = cmToInch(3.8)
+const DASHBOARD_TITLE_X = TITLE_SECTION_ORIGIN_X
+const DASHBOARD_TITLE_Y = TITLE_SECTION_ORIGIN_Y
+const PERIOD_BLOCK_OFFSET_X = pxToInch(330)
+const PERIOD_BLOCK_X = TITLE_SECTION_ORIGIN_X + PERIOD_BLOCK_OFFSET_X
+const PERIOD_BLOCK_Y = TITLE_SECTION_ORIGIN_Y +  pxToInch(-10)
+const PERIOD_LINE_GAP = pxToInch(14)
+const PERIOD_DATE_OFFSET = pxToInch(0)
+const PAGE_LABEL_X = SLIDE_WIDTH_IN - pxToInch(110)
+const PAGE_NUMBER_X = PAGE_LABEL_X + pxToInch(48)
+const PAGE_LABEL_Y = pxToInch(55)
+const PAGE_NUMBER_Y = PAGE_LABEL_Y
+const PAGE_FONT_SIZE = 11
+const LEFT_BAR_SQUARE_SIZE = cmToInch(1.06)
+const LEFT_BAR_COUNT = 5
+const LEFT_BAR_COLOR = '7FFF00'
+const LEFT_BAR_Y = pxToInch(30)
+const LEFT_BAR_X = -pxToInch(55)
+
 const getPptHeaderFragments = (title) => {
   if (!title && title !== 0) {
     return [{ text: '', options: { fontFace: PPT_HEADER_FONT_ZH } }]
@@ -242,147 +319,196 @@ const renderImagePlaceholder = (slide, currentX, rowY) => {
   })
 }
 
-const addDashboardSlide = (pptx, { title, periodText, kpis, creators }) => {
-  const slide = pptx.addSlide()
-  
-  // 标题和日期 - 标题左对齐，日期在右侧灰色显示
-  slide.addText(`${title} Dashboard`, { 
-    x: 0.4, 
-    y: 0.3, 
-    fontSize: 24, 
-    bold: true, 
-    fontFace: 'Microsoft YaHei' 
+const defineKosMaster = (pptx) => {
+  const masterObjects = []
+  for (let i = 0; i < LEFT_BAR_COUNT; i += 1) {
+    masterObjects.push({
+      rect: {
+        x: LEFT_BAR_X,
+        y: LEFT_BAR_Y + i * LEFT_BAR_SQUARE_SIZE,
+        w: LEFT_BAR_SQUARE_SIZE,
+        h: LEFT_BAR_SQUARE_SIZE,
+        fill: { color: 'FFFFFF', transparency: 100 },
+        line: { color: LEFT_BAR_COLOR, width: 0.5 }
+      }
+    })
+  }
+
+  pptx.defineSlideMaster({
+    title: MASTER_NAME,
+    bkgd: 'FFFFFF',
+    objects: masterObjects
   })
+}
+
+const createPageNumberGenerator = () => {
+  let currentPage = 1
+  return () => currentPage++
+}
+
+const drawPageIndicator = (slide, pageNumber) => {
+  if (!slide || !pageNumber) return
+  slide.addText('Page', {
+    x: PAGE_LABEL_X,
+    y: PAGE_LABEL_Y,
+    fontFace: FONT_PAGE,
+    fontSize: PAGE_FONT_SIZE,
+    color: '000000'
+  })
+  slide.addText(String(pageNumber), {
+    x: PAGE_NUMBER_X,
+    y: PAGE_NUMBER_Y,
+    fontFace: FONT_PAGE,
+    fontSize: PAGE_FONT_SIZE,
+    color: '000000'
+  })
+}
+
+const addDashboardSlide = (pptx, { title, periodText, kpis, creators, getNextPageNumber, periodOffsetX = 0 }) => {
+  const slide = pptx.addSlide({ masterName: MASTER_NAME })
+  drawPageIndicator(slide, getNextPageNumber?.())
+  
+  slide.addText(`${title} Dashboard`, { 
+    x: DASHBOARD_TITLE_X, 
+    y: DASHBOARD_TITLE_Y, 
+    fontSize: 28, 
+    bold: false, 
+    fontFace: FONT_DISPLAY 
+  })
+  const periodX = PERIOD_BLOCK_X + periodOffsetX
   slide.addText(`Period`, { 
-    x: 6.5, 
-    y: 0.35, 
-    fontSize: 12, 
+    x: periodX, 
+    y: PERIOD_BLOCK_Y, 
+    fontSize: 10.5, 
+    bold: true,
     color: '999999',
-    fontFace: 'Microsoft YaHei'
+    fontFace: FONT_DISPLAY
   })
   slide.addText(periodText, { 
-    x: 7.1, 
-    y: 0.35, 
-    fontSize: 12, 
+    x: periodX, 
+    y: PERIOD_BLOCK_Y + PERIOD_LINE_GAP + PERIOD_DATE_OFFSET, 
+    fontSize: 10, 
     color: '999999',
-    fontFace: 'Microsoft YaHei'
+    fontFace: FONT_DISPLAY
   })
   
   const safeKpis = Array.isArray(kpis) ? kpis : []
-  // 改为6列布局
-  const cols = 6
-  // 在原基础上缩小1/5 (即乘以0.8)
-  const cardW = 1.85 * 0.8  // 1.85 → 1.48
-  const cardH = 0.88 * 0.8  // 0.88 → 0.704
-  const gapX = 0.08 * 0.8   // 0.08 → 0.064
-  const gapY = 0.15 * 0.8   // 0.15 → 0.12
-  const startX = 0.55 // 保持左边距
-  const startY = 0.8  // 保持起始位置
+  const cols = KPI_COLS
+  const cardH = KPI_CARD_HEIGHT
+  const gapX = KPI_GAP_X
+  const gapY = KPI_GAP_Y
+  const startY = KPI_START_Y
+  const topSpacing = WEEKLY_TOP_SPACING
 
   safeKpis.forEach((metric, idx) => {
     const col = idx % cols
     const row = Math.floor(idx / cols)
-    const x = startX + col * (cardW + gapX)
+    let x = KPI_CARD_START_X
+    for (let c = 0; c < col; c += 1) {
+      const prevMetric = safeKpis[row * cols + c]
+      x += getCardWidth(prevMetric) + gapX
+    }
+    const cardW = getCardWidth(metric)
     const y = startY + row * (cardH + gapY)
     const highlight = metric.key === 'turnover'
+    const titleText = metric.key === 'cpr' ? CPR_TITLE : (metric.title || '')
+    const cardFillColor = highlight ? KPI_TURNOVER_CARD_FILL : KPI_CARD_FILL
     
-    // 卡片背景
     slide.addShape(pptx.ShapeType.roundRect, {
       x,
       y,
       w: cardW,
       h: cardH,
-      fill: { color: highlight ? 'FFD4D4' : 'F5F5F5' },
-      line: { color: 'E0E0E0', width: 0.5 },
-      rectRadius: 0.15
+      fill: { color: cardFillColor, transparency: KPI_CARD_FILL_TRANSPARENCY },
+      line: null,
+      rectRadius: 0.1
     })
     
-    // 内边距也缩小1/5
-    const padding = 0.1 * 0.8  // 0.1 → 0.08
+    const innerWidth = cardW - KPI_CARD_PADDING_LEFT - KPI_CARD_PADDING_RIGHT
+    const englishY = y + KPI_CARD_PADDING_TOP
+    const chineseY = englishY + KPI_EN_TO_CN_GAP
+    const valueBoxY = y + cardH - KPI_CARD_PADDING_BOTTOM - KPI_VALUE_BOX_HEIGHT
     
-    // 英文标题
-    slide.addText(metric.title || '', {
-      x: x + padding,
-      y: y + padding,
-      w: cardW - padding * 2,
-      fontSize: Math.round(8 * 0.8),  // 8 → 6.4 ≈ 6
+    slide.addText(titleText, {
+      x: x + KPI_CARD_PADDING_LEFT,
+      y: englishY,
+      w: innerWidth,
+      fontSize: KPI_EN_FONT_SIZE,
       color: '333333',
-      fontFace: 'Microsoft YaHei',
-      bold: false
+      fontFace: FONT_DISPLAY,
+      bold: false,
+      valign: 'top',
+      wrap: false,
+      autoFit: false
     })
     
-    // 中文副标题
     slide.addText(metric.subtitle || '', {
-      x: x + padding,
-      y: y + 0.28 * 0.8,  // 位置也按比例
-      w: cardW - padding * 2,
-      fontSize: Math.round(7 * 0.8),  // 7 → 5.6 ≈ 6
+      x: x + KPI_CARD_PADDING_LEFT,
+      y: chineseY,
+      w: innerWidth,
+      fontSize: KPI_CN_FONT_SIZE,
       color: '666666',
-      fontFace: 'Microsoft YaHei'
+      fontFace: FONT_CN,
+      valign: 'top'
     })
     
-    // 数值
     slide.addText(formatMetricValue(metric.value), {
-      x: x + padding,
-      y: y + 0.52 * 0.8,  // 位置也按比例
-      w: cardW - padding * 2,
-      fontSize: Math.round(14 * 0.8),  // 14 → 11.2 ≈ 11
+      x: x + KPI_CARD_PADDING_LEFT,
+      y: valueBoxY,
+      w: innerWidth,
+      h: KPI_VALUE_BOX_HEIGHT,
+      fontSize: (metric.key === 'cpr' || metric.key === 'turnover')
+        ? KPI_VALUE_FONT_SIZE_LARGE
+        : KPI_VALUE_FONT_SIZE_DEFAULT,
       bold: true,
-      color: highlight ? 'D32F2F' : '000000',
-      fontFace: 'Microsoft YaHei'
+      color: '000000',
+      fontFace: FONT_DISPLAY,
+      valign: 'bottom'
     })
   })
 
-  // Weekly Top 3 表格 - 扩展为包含完整列信息的表格
   const topCreators = (Array.isArray(creators) ? [...creators] : [])
     .sort((a, b) => parseMoneyNumber(b.turnover) - parseMoneyNumber(a.turnover))
     .slice(0, 3)
   
   if (topCreators.length) {
-    const topY = startY + Math.ceil(safeKpis.length / cols) * (cardH + gapY) + 0.25
-    
-    // Weekly Top 3 标题 - 字体也缩小1/5
-    slide.addText('Weekly Top 3', { 
-      x: 0.55,
-      y: topY, 
-      fontSize: Math.round(13 * 0.8),  // 13 → 10.4 ≈ 10
-      bold: true, 
-      fontFace: 'Microsoft YaHei' 
-    })
+    const topY = startY + Math.ceil(safeKpis.length / cols) * (cardH + gapY) + topSpacing
+    const tableY = WEEKLY_TABLE_Y
+    const tableX = WEEKLY_TABLE_X
+    const weeklyTitleX = Number.isFinite(WEEKLY_TITLE_X) ? WEEKLY_TITLE_X : tableX
+    const weeklyTitleY = Number.isFinite(WEEKLY_TITLE_Y) ? WEEKLY_TITLE_Y : (tableY - WEEKLY_LABEL_GAP)
     
     const tableColumns = [
-      { key: 'avatar', title: 'Creator\n头像', width: 0.9, type: 'avatar' },
-      { key: 'creatorName', title: 'Creator\n达人', width: 1.2, align: 'center' },
+      { key: 'avatar', title: '', width: cmToInch(0.9), type: 'avatar', align: 'right', headerFill: 'FFFFFF', showHeader: false },
+      { key: 'creatorName', title: '', width: cmToInch(2), align: 'left', headerFill: 'FFFFFF', showHeader: false },
       { key: 'storeCode', title: 'Store Code\n所属店铺', width: 1.1 },
-      { key: 'notes', title: 'Notes Published\n发布笔记数', width: 1.0 },
-      { key: 'engagement', title: 'Engagement\n笔记互动量', width: 1.0 },
-      { key: 'inquiries', title: 'Inqures Received\n私信开口数', width: 1.0 },
-      { key: 'wecom', title: 'WeCom Recruitment\n企微留资数', width: 1.0 },
-      { key: 'turnover', title: 'Turnover\n期间成交额', width: 1.3, highlight: true }
+      { key: 'notes', title: 'Notes Published\n发布笔记数', width: 1.3 },
+      { key: 'engagement', title: 'Engagement\n笔记互动量', width: 1.1 },
+      { key: 'inquiries', title: 'Inquiries Received\n私信开口数', width: 1.3 },
+      { key: 'wecom', title: 'WeCom Recruitment\n企微留资数', width: 1.1 },
+      { key: 'turnover', title: 'Turnover\n期间成交额', width: 1.1 + cmToInch(0.73), highlight: true }
     ]
     
-    const tableWidth = 11.6 * 0.8  // 11.6 → 9.28
     const totalRatio = tableColumns.reduce((sum, col) => sum + (col.width || 1), 0)
-    const colWidths = tableColumns.map(col => ((col.width || 1) / totalRatio) * tableWidth)
-    
-    const tableY = topY + 0.28 * 0.8  // 位置也按比例
-    const headerRowH = 0.38 * 0.8     // 表头行高：0.38 → 0.304
-    const dataRowH = 0.34 * 0.8       // 数据行高：0.34 → 0.272
+    const colWidths = tableColumns.map(col => ((col.width || 1) / totalRatio) * WEEKLY_TABLE_WIDTH)
+    const headerRowH = WEEKLY_HEADER_HEIGHT
+    const dataRowH = WEEKLY_DATA_HEIGHT
     const rowHeights = [headerRowH, ...Array(topCreators.length).fill(dataRowH)]
-    const headerFontSize = Math.round(7 * 0.8)  // 7 → 5.6 ≈ 6
-    const dataFontSize = Math.round(8 * 0.8)    // 8 → 6.4 ≈ 6
+    const headerFontSize = TABLE_HEADER_FONT_SIZE
+    const dataFontSize = TABLE_BODY_FONT_SIZE
     
     const tableRows = []
     tableRows.push(
       tableColumns.map(col => ({
-        text: getPptHeaderFragments(col.title),
+        text: col.showHeader === false ? '' : getPptHeaderFragments(col.title),
         options: {
-          bold: true,
+          bold: false,
           fontSize: headerFontSize,
+          fontFace: FONT_DISPLAY,
           color: '333333',
           align: 'center',
           valign: 'middle',
-          fill: { color: col.highlight ? 'FFD4D4' : 'F2F3F7' }
+          fill: { color: col.headerFill || (col.highlight ? '#ffc3b8' : '#f4f4f4') }
         }
       }))
     )
@@ -420,39 +546,38 @@ const addDashboardSlide = (pptx, { title, periodText, kpis, creators }) => {
         }
         const cellOptions = {
           fontSize: dataFontSize,
-          fontFace: 'Microsoft YaHei',
+          fontFace: FONT_DISPLAY,
           color: '000000',
           align: col.align || 'center',
           valign: 'middle'
         }
-        if (col.highlight) {
-          cellOptions.fill = { color: 'FFE5E8' }
-        }
+        // if (col.highlight) {
+        //   cellOptions.fill = { color: 'FFE5E8' }
+        // }
         return { text: cellText, options: cellOptions }
       })
       tableRows.push(row)
     })
     
     slide.addTable(tableRows, {
-      x: 0.55,
+      x: tableX,
       y: tableY,
-      w: tableWidth,
+      w: WEEKLY_TABLE_WIDTH,
       colW: colWidths,
       rowH: rowHeights,
-      border: { pt: 0.5, color: 'DDDDDD' },
       fill: { color: 'FFFFFF' }
     })
     
     const avatarColIndex = tableColumns.findIndex(col => col.key === 'avatar')
     const avatarColOffset = colWidths.slice(0, avatarColIndex).reduce((sum, w) => sum + w, 0)
     const avatarColWidth = colWidths[avatarColIndex]
-    const avatarSize = Math.min(avatarColWidth * 0.8, dataRowH - 0.05)
+    const avatarSize = Math.min(WEEKLY_AVATAR_SIZE, avatarColWidth, dataRowH)
     const avatarOffsetX = (avatarColWidth - avatarSize) / 2
     const avatarOffsetY = (dataRowH - avatarSize) / 2
     
     topCreators.forEach((creator, rowIdx) => {
       const cellY = tableY + headerRowH + rowIdx * dataRowH + avatarOffsetY
-      const cellX = 0.55 + avatarColOffset + avatarOffsetX
+      const cellX = tableX + avatarColOffset + avatarOffsetX
       if (creator?.avatarBase64) {
         try {
           slide.addImage({
@@ -460,34 +585,36 @@ const addDashboardSlide = (pptx, { title, periodText, kpis, creators }) => {
             x: cellX,
             y: cellY,
             w: avatarSize,
-            h: avatarSize,
-            rounding: true
+            h: avatarSize
           })
         } catch (e) {
-          slide.addShape(pptx.ShapeType.oval, {
+          slide.addShape(pptx.ShapeType.roundRect, {
             x: cellX,
             y: cellY,
             w: avatarSize,
             h: avatarSize,
             fill: { color: 'E0E0E0' },
-            line: { color: 'CCCCCC', width: 0.5 }
+            line: { color: 'CCCCCC', width: 0.5 },
+            rectRadius: avatarSize * 0.1
           })
         }
       } else {
-        slide.addShape(pptx.ShapeType.oval, {
+        slide.addShape(pptx.ShapeType.roundRect, {
           x: cellX,
           y: cellY,
           w: avatarSize,
           h: avatarSize,
           fill: { color: 'E0E0E0' },
-          line: { color: 'CCCCCC', width: 0.5 }
+          line: { color: 'CCCCCC', width: 0.5 },
+          rectRadius: avatarSize * 0.1
         })
+        const placeholderFont = Math.round((avatarSize / cmToInch(0.34)) * 12)
         slide.addText((creator?.creatorName || '?').charAt(0), {
           x: cellX,
           y: cellY,
           w: avatarSize,
           h: avatarSize,
-          fontSize: Math.round(12 * 0.8),
+          fontSize: placeholderFont,
           bold: true,
           color: '666666',
           align: 'center',
@@ -496,55 +623,57 @@ const addDashboardSlide = (pptx, { title, periodText, kpis, creators }) => {
         })
       }
     })
+
+    slide.addText('Weekly Top 3', {
+      x: weeklyTitleX,
+      y: weeklyTitleY,
+      fontSize: 11,
+      bold: false,
+      fontFace: FONT_DISPLAY
+    })
   }
 }
 
-const addTableSlides = (pptx, { title, periodText, columns, rows, chunkSize, style }) => {
+const addTableSlides = (pptx, { title, periodText, columns, rows, chunkSize, style, getNextPageNumber, periodOffsetX = 0 }) => {
   if (!Array.isArray(rows) || rows.length === 0) return
   const chunks = chunkList(rows, chunkSize)
   
-  chunks.forEach((chunk, index) => {
-    const slide = pptx.addSlide()
+  // 对齐 Dashboard 的顶部留白与横向起点
+  const TABLE_TITLE_X = DASHBOARD_TITLE_X
+  const TABLE_TITLE_Y = DASHBOARD_TITLE_Y
+  const TABLE_PERIOD_X = PERIOD_BLOCK_X + cmToInch(5) + periodOffsetX
+  const TABLE_PERIOD_Y = PERIOD_BLOCK_Y
+  const PERIOD_TO_HEADER_GAP = 0.4 // 保持原先 Period 到表头的间距（0.75 -> 1.15 的差值）
+  const HEADER_START_Y = TABLE_PERIOD_Y + PERIOD_TO_HEADER_GAP
+
+  chunks.forEach((chunk) => {
+    const slide = pptx.addSlide({ masterName: MASTER_NAME })
+    drawPageIndicator(slide, getNextPageNumber?.())
     
     // 标题
     slide.addText(title, { 
-      x: 0.4, 
-      y: 0.3, 
-      fontSize: 24, 
-      bold: true,
-      fontFace: 'Microsoft YaHei'
+      x: TABLE_TITLE_X, 
+      y: TABLE_TITLE_Y, 
+      fontSize: 28, 
+      bold: false,
+      fontFace: FONT_DISPLAY
     })
     
     // Period 日期
     slide.addText(`Period`, { 
-      x: 0.4, 
-      y: 0.75, 
-      fontSize: 14, 
+      x: TABLE_PERIOD_X, 
+      y: TABLE_PERIOD_Y, 
+      fontSize: 10.5, 
+      bold: true,
       color: '999999',
-      fontFace: 'Microsoft YaHei'
+      fontFace: FONT_DISPLAY
     })
     slide.addText(periodText, { 
-      x: 1.1, 
-      y: 0.75, 
-      fontSize: 14, 
+      x: TABLE_PERIOD_X, 
+      y: TABLE_PERIOD_Y + PERIOD_LINE_GAP + PERIOD_DATE_OFFSET, 
+      fontSize: 10, 
       color: '999999',
-      fontFace: 'Microsoft YaHei'
-    })
-    
-    // Page 页码
-    slide.addText(`Page`, { 
-      x: 11.8, 
-      y: 0.3, 
-      fontSize: 14, 
-      color: '666666',
-      fontFace: 'Microsoft YaHei'
-    })
-    slide.addText(String(index + 1), { 
-      x: 12.35, 
-      y: 0.3, 
-      fontSize: 14, 
-      color: '666666',
-      fontFace: 'Microsoft YaHei'
+      fontFace: FONT_DISPLAY
     })
     
     // 计算列宽 - 缩小1/5
@@ -552,24 +681,24 @@ const addTableSlides = (pptx, { title, periodText, columns, rows, chunkSize, sty
     const colWidths = columns.map(col => col.width ? col.width * 0.8 : (totalWidth / columns.length))
     
     // 表头背景
-    let currentX = 0.4
+    let currentX = cmToInch(8)
     const headerHeight = 0.5 * 0.8  // 0.5 → 0.4
     columns.forEach((col, colIdx) => {
       const isHighlight = style?.highlightColumns?.includes(col.key)
       slide.addShape(pptx.ShapeType.rect, {
         x: currentX,
-        y: 1.15,
+        y: HEADER_START_Y,
         w: colWidths[colIdx],
         h: headerHeight,
         fill: { color: isHighlight ? 'FFD4D4' : 'F2F3F7' },
-        line: { color: 'E0E0E0', width: 0.5 }
+        line: null
       })
       
       // 表头文字（支持多行）
       if (col.title) {
         slide.addText(getPptHeaderFragments(col.title), {
           x: currentX,
-          y: 1.15,
+          y: HEADER_START_Y,
           w: colWidths[colIdx],
           h: headerHeight,
           fontSize: Math.round(10 * 0.8),  // 10 → 8
@@ -589,8 +718,8 @@ const addTableSlides = (pptx, { title, periodText, columns, rows, chunkSize, sty
     const avatarPadding = 0.08 * 0.8  // 0.08 → 0.064
     
     chunk.forEach((item, rowIdx) => {
-      const rowY = 1.15 + headerHeight + rowIdx * rowHeight  // 使用缩小后的高度
-      currentX = 0.4
+      const rowY = HEADER_START_Y + headerHeight + rowIdx * rowHeight  // 使用缩小后的高度
+      currentX = cmToInch(8)
       
       columns.forEach((col, colIdx) => {
         const isHighlight = style?.highlightColumns?.includes(col.key)
@@ -602,7 +731,7 @@ const addTableSlides = (pptx, { title, periodText, columns, rows, chunkSize, sty
           w: colWidths[colIdx],
           h: rowHeight,
           fill: { color: isHighlight ? 'FFD4D4' : 'FFFFFF' },
-          line: { color: 'E0E0E0', width: 0.5 }
+          line: null
         })
         
         // 头像列特殊处理
@@ -654,68 +783,58 @@ const addTableSlides = (pptx, { title, periodText, columns, rows, chunkSize, sty
 }
 
 // 双栏布局的笔记表现表格（专门用于Performance by Note）
-const addNotePerformanceSlides = (pptx, { title, periodText, columns, rows }) => {
+const addNotePerformanceSlides = (pptx, { title, periodText, columns, rows, getNextPageNumber, periodOffsetX = 0 }) => {
   if (!Array.isArray(rows) || rows.length === 0) return
   
   // 每页双栏，每栏10条数据，共20条
   const itemsPerColumn = 10
   const itemsPerPage = itemsPerColumn * 2
   const chunks = chunkList(rows, itemsPerPage)
+
+  // 对齐 Dashboard 的顶部留白与横向起点
+  const NOTE_TITLE_X = DASHBOARD_TITLE_X
+  const NOTE_TITLE_Y = DASHBOARD_TITLE_Y
+  const NOTE_PERIOD_X = PERIOD_BLOCK_X + periodOffsetX
+  const NOTE_PERIOD_Y = PERIOD_BLOCK_Y
+  const PERIOD_TO_LIST_GAP = 0.4 // 保持原先 Period 到列表起始的间距（0.75 -> 1.15 的差值）
+  const NOTE_LIST_START_Y = NOTE_PERIOD_Y + PERIOD_TO_LIST_GAP
   
-  chunks.forEach((chunk, pageIndex) => {
-    const slide = pptx.addSlide()
+  chunks.forEach((chunk) => {
+    const slide = pptx.addSlide({ masterName: MASTER_NAME })
+    drawPageIndicator(slide, getNextPageNumber?.())
     
     // 标题
     slide.addText(title, { 
-      x: 0.4, 
-      y: 0.3, 
-      fontSize: 24, 
-      bold: true,
-      fontFace: 'Microsoft YaHei'
+      x: NOTE_TITLE_X, 
+      y: NOTE_TITLE_Y, 
+      fontSize: 28, 
+      bold: false,
+      fontFace: FONT_DISPLAY
     })
     
     // Period 日期
     slide.addText(`Period`, { 
-      x: 0.4,
-      y: 0.75, 
-      fontSize: 14, 
+      x: NOTE_PERIOD_X,
+      y: NOTE_PERIOD_Y, 
+      fontSize: 10.5, 
+      bold: true,
       color: '999999',
-      fontFace: 'Microsoft YaHei'
+      fontFace: FONT_DISPLAY
     })
     slide.addText(periodText, { 
-      x: 1.1, 
-      y: 0.75, 
-      fontSize: 14, 
+      x: NOTE_PERIOD_X, 
+      y: NOTE_PERIOD_Y + PERIOD_LINE_GAP + PERIOD_DATE_OFFSET, 
+      fontSize: 10, 
       color: '999999',
-      fontFace: 'Microsoft YaHei'
-    })
-    
-    // Page 页码
-    slide.addText(`Page`, { 
-      x: 11.8, 
-      y: 0.3, 
-      fontSize: 14, 
-      color: '666666',
-      fontFace: 'Microsoft YaHei'
-    })
-    slide.addText(String(pageIndex + 1), { 
-      x: 12.35, 
-      y: 0.3, 
-      fontSize: 14, 
-      color: '666666',
-      fontFace: 'Microsoft YaHei'
+      fontFace: FONT_DISPLAY
     })
     
     // 分割为左右两栏
     const leftColumnData = chunk.slice(0, itemsPerColumn)
     const rightColumnData = chunk.slice(itemsPerColumn)
     
-    // 渲染左栏 - 调整宽度使左右边距相等，然后缩小1/6，栏间距减少到0.1"
-    // 页面宽13.33"，左右边距各0.4"，栏间距0.1" (减少50%)
-    // 可用宽度 = 13.33 - 0.4 - 0.4 - 0.1 = 12.43"
-    // 每栏宽度 = 12.43 / 2 = 6.215"
-    // 额外缩小1/5后再缩小1/8：6.0" → 4.8" → 4.2"
-  const columnWidth = 6.0 * 0.7  // 6.0 → 4.2 (进一步收紧列宽)
+    // 渲染左栏 - 每个表格宽度设置为 5.5 英寸
+    const columnWidth = 6.3  // 每个表格宽度 5.5 英寸
     const leftStartX = 0.4
     const rightStartX = leftStartX + columnWidth + 0.2
     
@@ -723,7 +842,7 @@ const addNotePerformanceSlides = (pptx, { title, periodText, columns, rows }) =>
       columns,
       data: leftColumnData,
       startX: leftStartX,
-      startY: 1.15,
+      startY: NOTE_LIST_START_Y,
       columnWidth: columnWidth
     })
     
@@ -733,7 +852,7 @@ const addNotePerformanceSlides = (pptx, { title, periodText, columns, rows }) =>
         columns,
         data: rightColumnData,
         startX: rightStartX,
-        startY: 1.15,
+        startY: NOTE_LIST_START_Y,
         columnWidth: columnWidth
       })
     }
@@ -749,7 +868,7 @@ const renderNoteColumn = (pptx, slide, { columns, data, startX, startY, columnWi
   // 缩小1/5再缩小1/8，然后增加1/18，最后缩小1/6的参数
   const headerHeight = 0.6 * 0.8  // 0.6 → 0.48 (缩小1/5)
   const rowHeight = 0.45 * 0.8  // 0.45 → 0.36 (缩小1/5)
-  const headerFontSize = Math.round(8 * 0.8)  // 8 → 6 (缩小1/5)
+  const headerFontSize = 8
   
   // 表头背景和文字
   let currentX = startX
@@ -761,7 +880,7 @@ const renderNoteColumn = (pptx, slide, { columns, data, startX, startY, columnWi
       w: colWidths[colIdx],
       h: headerHeight,
       fill: { color: 'F2F3F7' },
-      line: { color: 'E0E0E0', width: 0.5 }
+      line: null
     })
     
     // 表头文字
@@ -776,6 +895,7 @@ const renderNoteColumn = (pptx, slide, { columns, data, startX, startY, columnWi
         color: '333333',
         align: 'center',
         valign: 'middle',
+        fontFace: FONT_DISPLAY,
         margin: 0  // 完全移除文本框内边距
       })
     }
@@ -791,7 +911,7 @@ const renderNoteColumn = (pptx, slide, { columns, data, startX, startY, columnWi
     columns.forEach((col, colIdx) => {
       const imagePadding = 0  // 完全移除padding
       const imageHeight = rowHeight  // 图片高度等于行高，完全填满
-      const dataFontSize = Math.round(8 * 0.8)  // 8 → 6 (缩小1/5)
+      const dataFontSize = 8
       const placeholderFontSize = Math.round(12 * 0.8)  // 12 → 10 (缩小1/5)
       
       // 单元格背景
@@ -801,7 +921,7 @@ const renderNoteColumn = (pptx, slide, { columns, data, startX, startY, columnWi
         w: colWidths[colIdx],
         h: rowHeight,
         fill: { color: 'FFFFFF' },
-        line: { color: 'E0E0E0', width: 0.5 }
+        line: null
       })
       
       // noteId列显示封面图（不显示ID文本）
@@ -887,7 +1007,7 @@ const renderNoteColumn = (pptx, slide, { columns, data, startX, startY, columnWi
           underline: true,
           align: 'center',
           valign: 'middle',
-          fontFace: 'Microsoft YaHei',
+          fontFace: FONT_DISPLAY,
           margin: 0
         })
         slide.addShape(pptx.ShapeType.rect, {
@@ -923,7 +1043,7 @@ const renderNoteColumn = (pptx, slide, { columns, data, startX, startY, columnWi
           color: '000000',
           align: isTextColumn ? 'left' : 'center',
           valign: 'middle',
-          fontFace: 'Microsoft YaHei',
+          fontFace: FONT_DISPLAY,
           margin: 0  // 完全移除文本框内边距
         })
       }
@@ -933,17 +1053,37 @@ const renderNoteColumn = (pptx, slide, { columns, data, startX, startY, columnWi
   })
 }
 
-const buildPptDocument = async ({ periodText, retail, wholesale }) => {
+const buildPptDocument = async ({ dashboardPeriodText, exportPeriodText, retail, wholesale }) => {
   const pptx = new PptxGenJS()
-  pptx.layout = 'LAYOUT_16x9'
+  // 设置与设计稿一致的 16:9 画布尺寸（33.87cm x 19.05cm ≈ 13.33" x 7.5"）
+  pptx.defineLayout({ name: 'custom16x9', width: 13.33, height: 7.5 })
+  pptx.layout = 'custom16x9'
+  defineKosMaster(pptx)
+  const getNextPageNumber = createPageNumberGenerator()
+
   
   // 预加载所有图片（转换为base64）
   console.log('开始加载图片...')
   
-  // 加载 Retail 达人头像
+  // 加载 Retail 达人头像（仪表盘口径，用于 Dashboard / Weekly Top3）
   const retailCreatorsWithImages = await Promise.all(
     (retail?.creators || []).map(async (creator) => {
-      const avatarBase64 = creator.avatar ? await imageUrlToBase64(creator.avatar) : null
+      const avatarBase64 = creator.avatarBase64
+        ? creator.avatarBase64
+        : (creator.avatar ? await imageUrlToBase64(creator.avatar) : null)
+      return {
+        ...creator,
+        avatarBase64
+      }
+    })
+  )
+
+  // 加载 Retail 达人头像（导出口径，用于 Piloting Performance）
+  const retailExportCreatorsWithImages = await Promise.all(
+    (retail?.exportCreators || []).map(async (creator) => {
+      const avatarBase64 = creator.avatarBase64
+        ? creator.avatarBase64
+        : (creator.avatar ? await imageUrlToBase64(creator.avatar) : null)
       return {
         ...creator,
         avatarBase64
@@ -971,10 +1111,25 @@ const buildPptDocument = async ({ periodText, retail, wholesale }) => {
     })
   )
   
-  // 加载 Wholesale 达人头像
+  // 加载 Wholesale 达人头像（仪表盘口径，用于 Dashboard / Weekly Top3）
   const wholesaleCreatorsWithImages = await Promise.all(
     (wholesale?.creators || []).map(async (creator) => {
-      const avatarBase64 = creator.avatar ? await imageUrlToBase64(creator.avatar) : null
+      const avatarBase64 = creator.avatarBase64
+        ? creator.avatarBase64
+        : (creator.avatar ? await imageUrlToBase64(creator.avatar) : null)
+      return {
+        ...creator,
+        avatarBase64
+      }
+    })
+  )
+
+  // 加载 Wholesale 达人头像（导出口径，用于 Piloting Performance）
+  const wholesaleExportCreatorsWithImages = await Promise.all(
+    (wholesale?.exportCreators || []).map(async (creator) => {
+      const avatarBase64 = creator.avatarBase64
+        ? creator.avatarBase64
+        : (creator.avatar ? await imageUrlToBase64(creator.avatar) : null)
       return {
         ...creator,
         avatarBase64
@@ -1007,53 +1162,63 @@ const buildPptDocument = async ({ periodText, retail, wholesale }) => {
   // Retail Dashboard
   addDashboardSlide(pptx, {
     title: retail?.title || 'Retail',
-    periodText,
+    periodText: dashboardPeriodText,
     kpis: retail?.kpis,
-    creators: retailCreatorsWithImages
+    creators: retailCreatorsWithImages,
+    getNextPageNumber
   })
   
   // Retail Piloting Performance（达人表现表格）
   addTableSlides(pptx, {
     title: `${retail?.title || 'Retail'} Piloting Performance`,
-    periodText,
+    periodText: exportPeriodText,
     columns: CREATOR_COLUMNS,
-    rows: retailCreatorsWithImages,
+    rows: retailExportCreatorsWithImages,
     chunkSize: 10,
-    style: { highlightColumns: ['turnover'] }
+    style: { highlightColumns: ['turnover'] },
+    getNextPageNumber
   })
   
   // Retail Performance by Note（笔记表现 - 双栏布局）
   addNotePerformanceSlides(pptx, {
     title: `${retail?.title || 'Retail'} Performance (by Note)`,
-    periodText,
+    periodText: dashboardPeriodText,
     columns: NOTE_COLUMNS,
-    rows: retailNotesWithImages
+    rows: retailNotesWithImages,
+    getNextPageNumber,
+    periodOffsetX: cmToInch(6)
   })
 
   // Wholesale Dashboard
   addDashboardSlide(pptx, {
     title: wholesale?.title || 'Wholesale',
-    periodText,
+    periodText: dashboardPeriodText,
     kpis: wholesale?.kpis,
-    creators: wholesaleCreatorsWithImages
+    creators: wholesaleCreatorsWithImages,
+    getNextPageNumber,
+    periodOffsetX: cmToInch(2)
   })
   
   // Wholesale Piloting Performance（达人表现表格）
   addTableSlides(pptx, {
     title: `${wholesale?.title || 'Wholesale'} Piloting Performance`,
-    periodText,
+    periodText: exportPeriodText,
     columns: CREATOR_COLUMNS,
-    rows: wholesaleCreatorsWithImages,
+    rows: wholesaleExportCreatorsWithImages,
     chunkSize: 10,
-    style: { highlightColumns: ['turnover'] }
+    style: { highlightColumns: ['turnover'] },
+    getNextPageNumber,
+    periodOffsetX: cmToInch(2)
   })
   
   // Wholesale Performance by Note（笔记表现 - 双栏布局）
   addNotePerformanceSlides(pptx, {
     title: `${wholesale?.title || 'Wholesale'} Performance (by Note)`,
-    periodText,
+    periodText: dashboardPeriodText,
     columns: NOTE_COLUMNS,
-    rows: wholesaleNotesWithImages
+    rows: wholesaleNotesWithImages,
+    getNextPageNumber,
+    periodOffsetX: cmToInch(8)
   })
 
   const fileName = `KOS分析-${dayjs().format('YYYYMMDD-HHmm')}.pptx`
@@ -1074,13 +1239,13 @@ export default function RetailAnalysis() {
     { key: 'inquiries', title: 'Inquiries Received', subtitle: '私信开口数', value: '-' },
     { key: 'wecom', title: 'WeCom Recruitment', subtitle: '企微留资数', value: '-' },
     { key: 'efficiency', title: 'WeCom Recruitment Efficiency', subtitle: '企微留资率', value: '-' },
-    { key: 'cpr', title: 'CPR', subtitle: '企微留资成本', value: '-' },
+    { key: 'cpr', title: CPR_TITLE, subtitle: '企微留资成本', value: '-' },
     { key: 'turnover', title: 'Turnover', subtitle: '期间成交额', value: '-' }
   ]
 
   const [weekRange, setWeekRange] = useState([
-    dayjs().subtract(1,'week').startOf('isoWeek').format('YYYY-MM-DD'),
-    dayjs().subtract(1,'week').endOf('isoWeek').format('YYYY-MM-DD')
+    dayjs().subtract(1,'week').startOf('isoWeek').format('YYYY.MM.DD'),
+    dayjs().subtract(1,'week').endOf('isoWeek').format('YYYY.MM.DD')
   ])
   
   const [storePage, setStorePage] = useState(1)
@@ -1110,7 +1275,8 @@ export default function RetailAnalysis() {
     if (dates && dates.length === 2) {
       const startWeek = dayjs(dates[0]).startOf('isoWeek')
       const endWeek = dayjs(dates[1]).endOf('isoWeek')
-      setWeekRange([startWeek.format('YYYY-MM-DD'), endWeek.format('YYYY-MM-DD')])
+      setWeekRange([startWeek.format('YYYY.MM.DD'), endWeek.format('YYYY.MM.DD')])
+      // 不再自动触发数据获取，需要用户手动点击"刷新数据"按钮
     }
   }
 
@@ -1143,13 +1309,13 @@ export default function RetailAnalysis() {
     }
     try {
       setStoreDataLoading(true)
-      const params = {
+      // 仪表盘达人列表：严格使用页面选择的周范围
+      const data = await RetailDashboardAPI.getCreatorPerformanceForDashboard({
         startDate: weekRange[0],
         endDate: weekRange[1],
         channel: channel || '品牌商',
         brandId: brandId
-      }
-      const data = await RetailDashboardAPI.getCreatorPerformance(params)
+      })
       setStoreData(Array.isArray(data) ? data : [])
     } catch (err) {
       console.error(err)
@@ -1203,44 +1369,134 @@ export default function RetailAnalysis() {
     }
     const startDate = weekRange[0]
     const endDate = weekRange[1]
-    const baseParams = { brandId, startDate, endDate, reportScope }
+  const baseParams = { brandId, startDate, endDate, reportScope }
+  const creatorParams = { brandId, startDate, endDate, reportScope }
+
+  const dashboardPeriodText = `${startDate} - ${endDate}`
+  const exportStartDate = dayjs(startDate, 'YYYY.MM.DD')
+    .startOf('month')
+    .startOf('isoWeek')
+    .format('YYYY.MM.DD')
+  const exportPeriodText = `${exportStartDate} - ${endDate}`
+
+  console.log('用户选择的周范围:', startDate, '~', endDate)
+
+    // 导出前，按仪表盘口径实时拉取一次达人数据（仅取数，不触发页面刷新按钮的回调）
+    try {
+      await RetailDashboardAPI.getCreatorPerformanceForDashboard({
+        brandId,
+        startDate,
+        endDate,
+        channel: channel || '品牌商'
+      })
+    } catch (e) {
+      console.error('导出前获取仪表盘达人数据失败', e)
+    }
+
     setExporting(true)
-    
+
     // 显示加载提示
     const loadingMsg = message.loading('正在准备数据...', 0)
     
     try {
+      // 仪表盘口径的达人列表（用于 Weekly Top 3），使用页面周范围
+      const dashboardRetailCreatorsPromise = RetailDashboardAPI.getCreatorPerformanceForDashboard({
+        ...baseParams,
+        channel: RETAIL_CHANNEL
+      })
+      const dashboardWholesaleCreatorsPromise = RetailDashboardAPI.getCreatorPerformanceForDashboard({
+        ...baseParams,
+        channel: WHOLESALE_CHANNEL
+      })
+
+      // 导出口径（本月第一周）的数据（用于 Piloting Performance 表格）
       const retailPromise = Promise.all([
         RetailDashboardAPI.getKpis({ ...baseParams, channel: RETAIL_CHANNEL }),
-        RetailDashboardAPI.getCreatorPerformance({ ...baseParams, channel: RETAIL_CHANNEL }),
+        RetailDashboardAPI.getCreatorPerformanceForExport({ ...creatorParams, channel: RETAIL_CHANNEL }),
         RetailDashboardAPI.getNotePerformance({ ...baseParams, channel: RETAIL_CHANNEL, costMin: 0 })
       ])
       const wholesalePromise = Promise.all([
         RetailDashboardAPI.getKpis({ ...baseParams, channel: WHOLESALE_CHANNEL }),
-        RetailDashboardAPI.getCreatorPerformance({ ...baseParams, channel: WHOLESALE_CHANNEL }),
+        RetailDashboardAPI.getCreatorPerformanceForExport({ ...creatorParams, channel: WHOLESALE_CHANNEL }),
         RetailDashboardAPI.getNotePerformance({ ...baseParams, channel: WHOLESALE_CHANNEL, costMin: 0 })
       ])
+
       const [
-        [retailKpiRes, retailCreators, retailNotes],
-        [wholesaleKpiRes, wholesaleCreators, wholesaleNotes]
-      ] = await Promise.all([retailPromise, wholesalePromise])
-      
+        dashboardRetailCreators,
+        dashboardWholesaleCreators,
+        [retailKpiRes, retailExportCreators, retailNotes],
+        [wholesaleKpiRes, wholesaleExportCreators, wholesaleNotes]
+      ] = await Promise.all([
+        dashboardRetailCreatorsPromise,
+        dashboardWholesaleCreatorsPromise,
+        retailPromise,
+        wholesalePromise
+      ])
+
       // 更新加载提示
       loadingMsg()
       const imageLoadingMsg = message.loading('正在加载图片，请稍候...', 0)
-      
+
+      // 预加载所有图片（转换为base64）
+      console.log('开始加载图片...')
+
+      // Weekly Top3 使用仪表盘口径的达人列表
+      const retailDashboardCreatorsWithImages = await Promise.all(
+        (dashboardRetailCreators || []).map(async (creator) => {
+          const avatarBase64 = creator.avatar ? await imageUrlToBase64(creator.avatar) : null
+          return {
+            ...creator,
+            avatarBase64
+          }
+        })
+      )
+
+      const wholesaleDashboardCreatorsWithImages = await Promise.all(
+        (dashboardWholesaleCreators || []).map(async (creator) => {
+          const avatarBase64 = creator.avatar ? await imageUrlToBase64(creator.avatar) : null
+          return {
+            ...creator,
+            avatarBase64
+          }
+        })
+      )
+
+      // Piloting Performance 表格使用导出口径的达人列表
+      const retailExportCreatorsWithImages = await Promise.all(
+        (retailExportCreators || []).map(async (creator) => {
+          const avatarBase64 = creator.avatar ? await imageUrlToBase64(creator.avatar) : null
+          return {
+            ...creator,
+            avatarBase64
+          }
+        })
+      )
+
+      const wholesaleExportCreatorsWithImages = await Promise.all(
+        (wholesaleExportCreators || []).map(async (creator) => {
+          const avatarBase64 = creator.avatar ? await imageUrlToBase64(creator.avatar) : null
+          return {
+            ...creator,
+            avatarBase64
+          }
+        })
+      )
+
       await buildPptDocument({
-        periodText: `${startDate} ~ ${endDate}`,
+        dashboardPeriodText,
+        exportPeriodText,
         retail: {
           title: 'Retail',
           kpis: retailKpiRes?.kpis || defaultKpis,
-          creators: retailCreators || [],
+          creators: retailDashboardCreatorsWithImages,
+          exportCreators: retailExportCreatorsWithImages,
           notes: retailNotes || []
         },
         wholesale: {
           title: 'Wholesale',
           kpis: wholesaleKpiRes?.kpis || defaultKpis,
-          creators: wholesaleCreators || [],
+          creators: wholesaleDashboardCreatorsWithImages,
+          exportCreators: wholesaleExportCreatorsWithImages,
           notes: wholesaleNotes || []
         }
       })
@@ -1546,7 +1802,7 @@ export default function RetailAnalysis() {
               format={(value) => {
                 if (!value) return ''
                 // 直接使用传入的value（已经是周的第一天或最后一天）
-                return dayjs(value).format('YYYY-MM-DD')
+                return dayjs(value).format('YYYY.MM.DD')
               }}
             />
             <Button 
