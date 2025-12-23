@@ -5,7 +5,8 @@ import {
   AppstoreOutlined,
   BarChartOutlined,
   DatabaseOutlined,
-  SettingOutlined
+  SettingOutlined,
+  FilterOutlined
 } from '@ant-design/icons'
 
 import KosList from './pages/KosList'
@@ -15,6 +16,7 @@ import Login from './pages/Login'
 import ResetPassword from './pages/ResetPassword'
 import Profile from './pages/Profile'
 import BrandManagement from './pages/BrandManagement'
+import PromotionDashboard from './pages/PromotionDashboard'
 
 import { useBrandManagementStore } from './stores/brandManagementStore'
 import { useAuthStore } from './stores/authStore'
@@ -111,6 +113,7 @@ export default function App() {
   const selected = React.useMemo(() => {
     if (location.pathname.startsWith('/sales-data')) return ['sales']
     if (location.pathname.startsWith('/retail-analysis')) return ['analysis']
+    if (location.pathname.startsWith('/promotion')) return ['promotion']
     if (location.pathname.startsWith('/kos')) return ['kos']
     return []
   }, [location.pathname])
@@ -143,7 +146,8 @@ export default function App() {
           selectedKeys={selected}
           items={[
             { key: 'kos', icon: <AppstoreOutlined />, label: <Link to="/kos">KOS列表管理</Link> },
-            { key: 'sales', icon: <DatabaseOutlined />, label: <Link to="/sales-data">KOS销售数据管理</Link> },
+            { key: 'sales', icon: <DatabaseOutlined />, label: <Link to="/sales-data">KOS销售管理</Link> },
+            { key: 'promotion', icon: <FilterOutlined />, label: <Link to="/promotion">KOS推广筛选</Link> },
             { key: 'analysis', icon: <BarChartOutlined />, label: <Link to="/retail-analysis">KOS分析</Link> },
             { key: 'brands', icon: <SettingOutlined />, label: <Link to="/brands">品牌管理</Link> }
           ]}
@@ -213,6 +217,7 @@ export default function App() {
             <Route path="/kos" element={<KosList />} />
             <Route path="/sales-data" element={<SalesData />} />
             <Route path="/retail-analysis" element={<RetailAnalysis />} />
+            <Route path="/promotion" element={<PromotionDashboard />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/brands" element={<BrandManagement />} />
           </Routes>
