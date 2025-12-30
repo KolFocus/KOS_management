@@ -129,9 +129,9 @@ export class ExcelUtils {
         errors.push(`第${rowNum}行: 用户ID为必填字段`)
       }
       
-      // 验证参与统计字段（第5列，如果填写了必须是1或2）
-      if (row[5] && ![1, 2, '1', '2'].includes(row[5])) {
-        errors.push(`第${rowNum}行: 参与统计必须是1（上线）或2（下线）`)
+    // 验证参与统计字段（第5列，如填写仅允许0或1；空视为0）
+    if (row[5] !== undefined && row[5] !== null && row[5] !== '' && ![0, 1, '0', '1'].includes(row[5])) {
+      errors.push(`第${rowNum}行: 参与统计必须是1（参与）或0（不参与）`)
       }
     }
     
@@ -187,7 +187,8 @@ export class ExcelUtils {
         所属用户: row[2] || '',
         所属店铺: row[3] || '',
         渠道: row[4] || '',
-        参与统计: parseInt(row[5]) || 1
+        // 参与统计：1=参与，0=不参与；空或非1按0处理
+        参与统计: parseInt(row[5]) === 1 ? 1 : 0
       }
       
       kosDataList.push(kosData)

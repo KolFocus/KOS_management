@@ -1,0 +1,277 @@
+{
+  "presentation_info": {
+    "author": "Meline Wong",
+    "subject": "",
+    "title": "PowerPoint Presentation"
+  },
+  "slides": [
+    {
+      "slide_number": 1,
+      "text_blocks": [
+        {
+          "text": "Retail Dashboard",
+          "type": "Title"
+        },
+        {
+          "text": "Piloting Account",
+          "type": "Title"
+        },
+        {
+          "text": "当前KOSA账号数",
+          "type": "Title"
+        },
+        {
+          "text": "Store Code\n所属店铺 | Notes Published\n发布笔记数 | Engagement\n笔记互动量 | Inquires Received\n私信开口数 | WeCom Recruitment\n企微留资数 | Turnover\n期间成交量\nSylvia Ma | MNDJ | 1 | 0 | 1 | 1 | ¥31,000\nVanna Xue | MNDJ | 6 | 1 | 0 | 3 | ¥25,700\nAdeline Lei | MCS | 11 | 7 | 2 | 7 | ¥17,220",
+          "type": "Table"
+        },
+        {
+          "text": "Turnover",
+          "type": "Title"
+        },
+        {
+          "text": "期间成交量",
+          "type": "Title"
+        },
+        {
+          "text": "Period\n2025.10.20 – 2025.10.26",
+          "type": "Title"
+        },
+        {
+          "text": "Weekly Top 3",
+          "type": "Title"
+        },
+        {
+          "text": "13",
+          "type": "Title"
+        },
+        {
+          "text": "28",
+          "type": "Title"
+        },
+        {
+          "text": "56",
+          "type": "Title"
+        },
+        {
+          "text": "402",
+          "type": "Title"
+        },
+        {
+          "text": "113",
+          "type": "Title"
+        },
+        {
+          "text": "￥168,858",
+          "type": "Title"
+        },
+        {
+          "text": "107",
+          "type": "Title"
+        },
+        {
+          "text": "￥35.35",
+          "type": "Title"
+        },
+        {
+          "text": "22.97%",
+          "type": "Title"
+        },
+        {
+          "text": "6,499",
+          "type": "Title"
+        },
+        {
+          "text": "Engagement from Paid",
+          "type": "Title"
+        },
+        {
+          "text": "20",
+          "type": "Title"
+        }
+      ]
+    },
+    {
+      "slide_number": 2,
+      "text_blocks": [
+        {
+          "text": "Retail Piloting Performance",
+          "type": "Text"
+        },
+        {
+          "text": "Store Code\n所属店铺 | Notes Published\n发布笔记数 | Engagement\n笔记互动量 | Inquires Received\n私信开口数 | WeCom Recruitment\n企微留资数 | Turnover\n期间成交量\nVanna Xue | MNDJ | 22 | 16 | 6 | 13 | ¥138,960\nAda Liu | MNDJ | 9 | 14 | 16 | 38 | ¥134,360\nSylvia Ma | MNDJ | 13 | 10 | 9 | 1 | ¥132,850\nGuanguan | MQT | 32 | 27 | 16 | 46 | ¥98,230\nKern Ding | MCS | 71 | 30 | 13 | 71 | ¥93,930\nAmy Fan | MHMC | 7 | 19 | 8 | 30 | ¥83,650\nAdeline Lei | MCS | 35 | 33 | 10 | 53 | ¥63,570\nBonnie Luo | MZD | 27 | 40 | 11 | 36 | ¥51,700\nSummer Wang | MBTK | 14 | 16 | 7 | 26 | ¥48,350\nGold Wang | MWH | 21 | 39 | 10 | 4 | ¥46,050",
+          "type": "Table"
+        },
+        {
+          "text": "Period\n2025.09.29 – 2025.10.26",
+          "type": "Text"
+        }
+      ]
+    },
+    {
+      "slide_number": 3,
+      "text_blocks": [
+        {
+          "text": "Retail Piloting Performance",
+          "type": "Text"
+        },
+        {
+          "text": "Store Code\n所属店铺 | Notes Published\n发布笔记数 | Engagement\n笔记互动量 | Inquires Received\n私信开口数 | WeCom Recruitment\n企微留资数 | Turnover\n期间成交量\nAoki Li | MCQM | 14 | 33 | 12 | 21 | ¥43,760\nEddie Yuan | MJC | 11 | 30 | 16 | 16 | ¥34,260\nLinda Luo | MCQM | 19 | 43 | 16 | 15 | ¥26,000\nElson Men | MBCW | 18 | 35 | 12 | 2 | ¥24,910\nEddie Wang | MHMC | 6 | 21 | 13 | 7 | ¥17,328\nJessica Zhang | MGTKH | 18 | 23 | 5 | 40 | ¥16,250\nNikki Ke | MRE | 56 | 39 | 14 | 22 | ¥15,850\nYuki Zhang | MGTKH | 10 | 26 | 16 | 12 | ¥14,300\nChenille | MZD | 18 | 20 | 18 | 2 | ¥12,130\nElla Wang | MQT | 35 | 24 | 8 | 4 | ¥10,800",
+          "type": "Table"
+        },
+        {
+          "text": "Period\n2025.09.29 – 2025.10.26",
+          "type": "Text"
+        }
+      ]
+    },
+    {
+      "slide_number": 4,
+      "text_blocks": [
+        {
+          "text": "Retail Performance (by Note)",
+          "type": "Text"
+        },
+        {
+          "text": "Period\n2025.10.20 – 2025.10.26",
+          "type": "Text"
+        },
+        {
+          "text": "Note\n笔记 | Note Link\n笔记\n链接 | Store Code\n所属账号 | Cost\n投放消耗 | Engagement\n笔记互动量 | CPE\n互动成本 | Inquires Received\n私信开口数 | 私信开口成本 | 笔记内容总结\nLink | Eddie Yuan | 317 | 10 | 32 | 6 | 53 | \"视频讲解与多场景穿搭展示，突出增高显瘦。\"\nLink | Eddie Wang | 229 | 2 | 115 | 2 | 115 | \"新品速递，直观展现产品亮点\"\nLink | Jessica Zhang | 213 | 6 | 35 | 0 | - | \"多角度实拍+口语化表达，引导用户互动选择。\"\nLink | Bonnie Luo | 210 | 9 | 23 | 1 | 210 | \"直观视觉呈现，包袋收纳与品牌感。\"\nLink | Kern Ding | 177 | 5 | 35 | 2 | 89 | \"纯粹商品视觉展示，缺乏具体描述。\"\nLink | Adeline Lei | 177 | 3 | 59 | 1 | 177 | \"真人试穿大牌新品，视觉直观呈现休闲穿搭。\"\nLink | Sylvia Ma | 171 | 0 | - | 1 | 171 | \"直接展示产品特性与搭配场景\"\nLink | Gold Wang | 158 | 3 | 53 | 2 | 79 | \"多款德训鞋上脚展示，视觉冲击力强。\"\nLink | Summer Wang | 136 | 0 | - | 1 | 136 | \"潮流穿搭实测，兼顾风度与温度\"\nLink | Summer Wang | 114 | 2 | 57 | 1 | 114 | \"简约实物展示，搭配日常穿搭。\"",
+          "type": "Table"
+        },
+        {
+          "text": "Note\n笔记 | Note Link\n笔记\n链接 | Store Code\n所属账号 | Cost\n投放消耗 | Engagement\n笔记互动量 | CPE\n互动成本 | Inquires Received\n私信开口数 | 私信开口成本 | 笔记内容总结\nLink | Nikki Ke | 112 | 6 | 19 | 1 | 112 | \"秀场视角，聚焦解构设计感鞋款细节。\"\nLink | Vanna Xue | 105 | 1 | 105 | 0 | - | \"新品试穿分享，细节特写，风格休闲。\"\nLink | Adeline Lei | 83 | 4 | 21 | 1 | 83 | \"品牌混搭日常穿搭，镜面自拍展示。\"\nLink | Amy Fan | 76 | 1 | 76 | 0 | - | \"多场景上身，细节亮点突出\"\nLink | Gold Wang | 67 | 1 | 67 | 1 | 67 | \"对比穿搭展示，细节特写。\"\nLink | Eddie Wang | 66 | 0 | - | 1 | 66 | \"动态穿搭展示，激发用户互动选色\"\nLink | Amy Fan | 56 | 1 | 56 | 0 | - | \"视频实物展示，多色细节种草\"\nLink | Ella Wang | 53 | 0 | - | 0 | - | \"秋日慵懒风穿搭分享\"\nLink | Ella Wang | 51 | 1 | 51 | 0 | - | \"多色Tabi靴展示，视觉精致\"\nLink | Kern Ding | 48 | 0 | - | 0 | - | -",
+          "type": "Table"
+        }
+      ]
+    },
+    {
+      "slide_number": 5,
+      "text_blocks": [
+        {
+          "text": "Retail Performance (by Note)",
+          "type": "Text"
+        },
+        {
+          "text": "Period\n2025.10.20 – 2025.10.26",
+          "type": "Text"
+        },
+        {
+          "text": "Note\n笔记 | Note Link\n笔记\n链接 | Store Code\n所属账号 | Cost\n投放消耗 | Engagement\n笔记互动量 | CPE\n互动成本 | Inquires Received\n私信开口数 | 私信开口成本 | 笔记内容总结\nLink | Gold Wang | 39 | 0 | - | 0 | - | \"镜面自拍展示品牌秋冬穿搭，强调层次与复古感。\"\nLink | Bonnie Luo | 36 | 1 | 36 | 2 | 18 | \"新款外套合集，简洁直观。\"\nLink | Vanna Xue | 29 | 0 | - | 0 | - | \"多色实物展示，直接互动引导选择。\"\nLink | Summer Wang | 23 | 0 | - | 0 | - | \"强调单品时尚力，穿搭场景化，视觉吸睛。\"\nLink | Vanna Xue | 22 | 0 | - | 0 | - | \"直观上身展示，强调功能实用性。\"\nLink | Nikki Ke | 12 | 0 | - | 0 | - | \"多角度动态展示新款包包的简约实用性\"\nLink | Amy Fan | 10 | 0 | - | 0 | - | \"新款夹克实穿展示，材质细节讲解\"\nLink | Nikki Ke | 3 | 0 | - | 0 | - | \"鞋款直观展示，强调舒适与时尚兼具。\"",
+          "type": "Table"
+        }
+      ]
+    },
+    {
+      "slide_number": 6,
+      "text_blocks": [
+        {
+          "text": "Wholesale Dashboard",
+          "type": "Text"
+        },
+        {
+          "text": "Store Code\n所属店铺 | Notes Published\n发布笔记数 | Engagement\n笔记互动量 | Inquires Received\n私信开口数 | WeCom Recruitment\n企微留资数 | Turnover\n期间成交量\nAllo | HZ MixC | 8 | - | - | - | -\nRick | HZ MixC | 4 | - | - | - | -\nYoyo | HZ MixC | 4 | - | - | - | -",
+          "type": "Table"
+        },
+        {
+          "text": "Period\n2025.10.20 – 2025.10.26",
+          "type": "Text"
+        },
+        {
+          "text": "Weekly Top 3",
+          "type": "Text"
+        },
+        {
+          "text": "1",
+          "type": "Text"
+        },
+        {
+          "text": "3",
+          "type": "Text"
+        },
+        {
+          "text": "232",
+          "type": "Text"
+        },
+        {
+          "text": "219",
+          "type": "Text"
+        },
+        {
+          "text": "60",
+          "type": "Text"
+        },
+        {
+          "text": "Turnover",
+          "type": "Text"
+        },
+        {
+          "text": "期间成交量",
+          "type": "Text"
+        },
+        {
+          "text": "￥-",
+          "type": "Text"
+        },
+        {
+          "text": "-",
+          "type": "Text"
+        },
+        {
+          "text": "￥-",
+          "type": "Text"
+        },
+        {
+          "text": "-%",
+          "type": "Text"
+        },
+        {
+          "text": "1,846",
+          "type": "Text"
+        },
+        {
+          "text": "4",
+          "type": "Text"
+        }
+      ]
+    },
+    {
+      "slide_number": 7,
+      "text_blocks": [
+        {
+          "text": "Wholesale Piloting Performance",
+          "type": "Text"
+        },
+        {
+          "text": "Store Code\n所属店铺 | Notes Published\n发布笔记数 | Engagement\n笔记互动量 | Inquires Received\n私信开口数 | WeCom Recruitment\n企微留资数 | Turnover\n期间成交量\nAllo | HZ MixC | 47 | 46 | 13\nRick | HZ MixC | 29 | 32 | 20\nYoyo | HZ MixC | 25 | 37 | 18\nAda | NB Hankyu | 13 | 20 | 5\nLuna | WX Hanglung | 34 | 38 | 15\nVivi | CS IFS | 45 | 40 | 13\nCathy | NB Hankyu | 13 | 26 | 13\nJosie | CS IFS | 75 | 27 | 18\nSarah | CS IFS | 23 | - | -",
+          "type": "Table"
+        },
+        {
+          "text": "Period\n2025.09.29 – 2025.10.26",
+          "type": "Text"
+        }
+      ]
+    },
+    {
+      "slide_number": 8,
+      "text_blocks": [
+        {
+          "text": "Wholesale Performance (by Note)",
+          "type": "Text"
+        },
+        {
+          "text": "Period\n2025.10.20 – 2025.10.26",
+          "type": "Text"
+        },
+        {
+          "text": "Note\n笔记 | Note Link\n笔记\n链接 | Store Code\n所属账号 | Cost\n投放消耗 | Engagement\n笔记互动量 | CPE\n互动成本 | Inquires Received\n私信开口数 | 私信开口成本 | 笔记内容总结\nLink | Cathy | 98 | 2 | 49 | 1 | 98 | \"多色展示，强调造型与搭配感。\"\nLink | Cathy | 22 | 1 | 22 | 0 | - | \"酷飒暗黑穿搭，突出品牌调性。\"\nLink | Cathy | 14 | 1 | 14 | 0 | - | \"品牌单品穿搭示范，营造松弛感。\"",
+          "type": "Table"
+        }
+      ]
+    }
+  ],
+  "total_characters": 5041,
+  "total_slides": 8,
+  "total_text_blocks": 56,
+  "total_words": 1257
+}

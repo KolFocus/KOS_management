@@ -13,10 +13,10 @@ export const TABLES = {
   KOS_LEADS: '小红书专业号_kos线索统计'
 }
 
-// 状态常量
+// 状态常量（1=参与，0=不参与）
 export const STATUS = {
-  ONLINE: 1,  // 上线
-  OFFLINE: 2  // 下线
+  ONLINE: 1,
+  OFFLINE: 0
 }
 
 // 移除周期类型常量，允许自由输入

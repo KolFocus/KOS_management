@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>方案B：规划-监控-结束三阶段静态示例</title>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --border: #e5e7ee;
+      --text: #1f2430;
+      --muted: #6b7080;
+      --green: #16a34a;
+      --yellow: #eab308;
+      --red: #ef4444;
+      --blue: #3b82f6;
+      --pill: #f1f5f9;
+      --shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 32px 24px 64px;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    h1, h2, h3 { margin: 0 0 8px; }
+    h1 { font-size: 24px; }
+    h2 { font-size: 18px; margin-top: 24px; }
+    h3 { font-size: 16px; margin-top: 16px; }
+    p { margin: 0 0 12px; color: var(--muted); }
+    .section { margin-bottom: 24px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+      min-width: 280px;
+      flex: 1 1 320px;
+      position: relative;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+    }
+    .badge.red { background: var(--red); }
+    .badge.yellow { background: var(--yellow); color: #1f2430; }
+    .badge.green { background: var(--green); }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      background: var(--pill);
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .progress {
+      position: relative;
+      background: var(--pill);
+      border-radius: 6px;
+      height: 8px;
+      overflow: hidden;
+      margin: 8px 0;
+    }
+    .progress .fill { height: 100%; background: var(--blue); }
+    .progress .cap { position: absolute; top: 0; right: 0; width: 2px; height: 100%; background: var(--muted); opacity: 0.6; }
+    .bar-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text);
+      font-size: 12px;
+      cursor: default;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    }
+    .btn.primary { border-color: var(--blue); color: var(--blue); }
+    .btn.ghost { background: transparent; }
+    .btn.clickable { cursor: pointer; }
+    .btn.active { border-color: var(--blue); color: var(--blue); background: #e8f1ff; }
+    .hint { font-size: 12px; color: var(--muted); }
+    .legend { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); margin-right: 12px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .warning-text { font-size: 13px; color: var(--text); }
+    .divider { border-bottom: 1px dashed var(--border); margin: 12px 0; }
+    .tabs { display: inline-flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+    .tab {
+      padding: 8px 14px;
+      border-radius: 10px;
+      background: #fff;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-weight: 600;
+      box-shadow: var(--shadow);
+    }
+    .tab.active { border-color: var(--blue); color: var(--blue); }
+    .panel-note { font-size: 12px; color: var(--muted); margin-top: 6px; }
+    .meta { font-size: 12px; color: var(--muted); }
+    .range-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: 8px;
+      min-width: 260px;
+    }
+    .metric { display: flex; justify-content: space-between; font-size: 13px; color: var(--text); }
+    .metric strong { font-size: 14px; }
+    .metric .muted { color: var(--muted); }
+    .input-like {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+      font-size: 13px;
+      color: var(--text);
+      min-width: 160px;
+    }
+    .input-like .muted { color: var(--muted); }
+    .tip { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .slider-row { display: flex; align-items: center; gap: 10px; margin: 8px 0 4px; }
+    .slider-row input[type="range"] {
+      flex: 1;
+      accent-color: var(--blue);
+    }
+    .slider-value { font-size: 12px; color: var(--muted); }
+    .segmented-bar {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin: 6px 0 4px;
+    }
+    .segment {
+      height: 10px;
+      background: var(--pill);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+    .segment.over-cap { overflow: hidden; }
+    .segment .fill {
+      display: block;
+      height: 100%;
+      background: var(--green);
+    }
+    .segment .overfill {
+      position: absolute;
+      top: 0;
+      left: 100%;
+      height: 100%;
+      background: var(--red);
+    }
+    .segment .overfill-text {
+      position: absolute;
+      right: 4px;
+      top: 0;
+      font-size: 8px;
+      font-weight: 600;
+      color: #facc15;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+      line-height: 10px;
+    }
+    .segment-dates {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin: 4px 0 0;
+      font-size: 10px;
+      color: var(--muted);
+      text-align: center;
+    }
+    .segment-dates .date-cell {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+    .marker-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--red);
+    }
+    .date-cell .marker-dot {
+      margin-top: 2px;
+      position: relative;
+    }
+    .date-cell .marker-dot::after {
+      content: attr(data-tip);
+      position: absolute;
+      top: -18px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #fff;
+      color: var(--red);
+      border: 1px solid var(--red);
+      border-radius: 6px;
+      padding: 2px 6px;
+      font-size: 10px;
+      white-space: nowrap;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.15s ease, transform 0.15s ease;
+      transform: translate(-50%, -4px);
+    }
+    .date-cell .marker-dot:hover::after {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(-50%, -8px);
+    }
+    .marker-label {
+      font-size: 9px;
+      color: var(--red);
+      line-height: 1.2;
+    }
+  </style>
+</head>
+<body>
+  <div class="section">
+    <h1>方案B：规划-监控-结束 三阶段静态示例</h1>
+    <p>纯静态示例，使用示例数字说明展示与交互；无真实数据或脚本。</p>
+    <div class="tabs">
+      <span class="tab active">规划面板（推荐态）</span>
+      <span class="tab">监控面板（执行中）</span>
+      <span class="tab">结束面板（复盘）</span>
+    </div>
+    <p class="panel-note">说明：实际产品中通过标签切换；本页同时展开三块用于示意。</p>
+  </div>
+
+  <!-- 时间范围与月度基线（全局范围，达人独立核算） -->
+  <div class="section">
+    <h2>时间范围选择与月度基线（规划前）</h2>
+    <div class="topbar">
+      <span class="legend"><span class="dot" style="background: var(--blue);"></span>先选全局时间范围，再计算基线</span>
+      <span class="pill">时间范围对所有达人生效；额度口径为达人独立</span>
+    </div>
+    <div class="grid">
+      <div class="range-card">
+        <strong>选择规划时间范围</strong>
+        <div class="row" style="gap:8px;">
+          <span class="input-like"><span class="muted">起始</span> 2025-03-18 ▼</span>
+          <span class="input-like"><span class="muted">结束</span> 2025-03-24 ▼</span>
+        </div>
+        <div class="metric"><span class="muted">范围天数</span><strong>7 天</strong></div>
+        <p class="hint">说明：日期为示例占位，实际应可选择；范围用于后续上限/底线均摊。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 规划面板：初始推荐态 -->
+  <div class="section">
+    <h2>规划面板</h2>
+    <div class="topbar">
+      <span class="legend"><span class="dot" style="background: var(--green);"></span>推荐</span>
+      <span class="pill">基于：阅读剩余时间 / 月度剩余额度</span>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <div class="topbar">
+          <h3>达人P1</h3>
+          <span class="badge green">推荐</span>
+        </div>
+        
+        <p class="hint">规划时间范围：2025-03-18 ~ 2025-03-24（7 天）</p>
+        <div class="bar-label"><span>底线 180</span><span>上限 300</span></div>
+        <div class="slider-row">
+          <input type="range" min="180" max="300" value="240" disabled>
+          <span class="slider-value">计划值（可调）：240</span>
+        </div>
+        <div class="progress" title="推荐说明：D30缺口小，月剩余额度充足，表现优先靠近上限">
+          <div class="fill" style="width: 80%; background: var(--blue);"></div>
+        </div>
+        <div class="divider"></div>
+        <div class="row">
+          <div style="flex:1;">
+            <div class="bar-label"><span>月度已用 480</span><span>上限 1200</span></div>
+            <div class="progress" title="规划态预估：计划 240 后预计占用 60%">
+              <div class="fill" style="width: 60%; background: var(--blue);"></div>
+              <div class="cap" style="right: 0;"></div>
+            </div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="bar-label"><span>月度时间进度（2025-09-01 ~ 2025-09-30）</span><span>已过 18 天 | 剩余 12 天</span></div>
+        <div class="progress" title="月度时间线：灰底=全月，蓝色=已过；竖线=今天">
+          <div class="fill" style="width: 60%; background: var(--green);"></div>
+          <div class="cap" style="right: 40%; background: var(--muted);"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="topbar">
+          <h3>达人P2</h3>
+          <span class="badge green">推荐</span>
+        </div>
+        
+        <p class="hint">规划时间范围：2025-03-18 ~ 2025-03-24（7 天）</p>
+        <div class="bar-label"><span>底线 180</span><span>上限 300</span></div>
+        <div class="slider-row">
+          <input type="range" min="180" max="300" value="240" disabled>
+          <span class="slider-value">计划值（可调）：240</span>
+        </div>
+        <div class="progress" title="推荐说明：D30缺口小，月剩余额度充足，表现优先靠近上限">
+          <div class="fill" style="width: 80%; background: var(--blue);"></div>
+        </div>
+        <div class="divider"></div>
+        <div class="row">
+          <div style="flex:1;">
+            <div class="bar-label"><span>月度已用 480</span><span>上限 1200</span></div>
+            <div class="progress" title="规划态预估：计划 240 后预计占用 60%">
+              <div class="fill" style="width: 60%; background: var(--blue);"></div>
+              <div class="cap" style="right: 0;"></div>
+            </div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="bar-label"><span>月度时间进度（2025-09-01 ~ 2025-09-30）</span><span>已过 18 天 | 剩余 12 天</span></div>
+        <div class="progress" title="月度时间线：灰底=全月，蓝色=已过；竖线=今天">
+          <div class="fill" style="width: 60%; background: var(--green);"></div>
+          <div class="cap" style="right: 40%; background: var(--muted);"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="topbar">
+          <h3>达人P3</h3>
+          <span class="badge green">推荐</span>
+        </div>
+        
+        <p class="hint">规划时间范围：2025-03-18 ~ 2025-03-24（7 天）</p>
+        <div class="bar-label"><span>底线 180</span><span>上限 300</span></div>
+        <div class="slider-row">
+          <input type="range" min="180" max="300" value="240" disabled>
+          <span class="slider-value">计划值（可调）：240</span>
+        </div>
+        <div class="progress" title="推荐说明：D30缺口小，月剩余额度充足，表现优先靠近上限">
+          <div class="fill" style="width: 80%; background: var(--blue);"></div>
+        </div>
+        <div class="divider"></div>
+        <div class="row">
+          <div style="flex:1;">
+            <div class="bar-label"><span>月度已用 480</span><span>上限 1200</span></div>
+            <div class="progress" title="规划态预估：计划 240 后预计占用 60%">
+              <div class="fill" style="width: 60%; background: var(--blue);"></div>
+              <div class="cap" style="right: 0;"></div>
+            </div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="bar-label"><span>月度时间进度（2025-09-01 ~ 2025-09-30）</span><span>已过 18 天 | 剩余 12 天</span></div>
+        <div class="progress" title="月度时间线：灰底=全月，蓝色=已过；竖线=今天">
+          <div class="fill" style="width: 60%; background: var(--green);"></div>
+          <div class="cap" style="right: 40%; background: var(--muted);"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 监控面板：执行中（原有内容，保留示例数字） -->
+  <div class="section">
+    <h2>监控面板</h2>
+  </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="topbar">
+          <h3>达人A（待观察）</h3>
+          <span class="badge green" title="点击角标弹出预警说明">正常</span>
+          <span class="badge red" title="点击角标弹出预警说明">D30预警(周期内)</span>
+          <!-- <span class="badge yellow" title="点击角标弹出预警说明">月度风险</span> -->
+        </div>
+        <div class="bar-label"><span>0</span><span>当前 150</span><span>周期计划总额 180</span></div>
+        <div class="progress" title="计划总额 180，已执行 80，进度 44%">
+          <div class="fill" style="width: 40%; background: var(--blue);"></div>
+          <div class="cap" style="right: calc(100% - 100%);"></div>
+        </div>
+        <div class="bar-label"><span></span><span class="hint">已执行 150（44%）</span></div>
+        <div class="divider"></div>
+        <div class="row">
+          <div style="flex:1;">
+            <div class="bar-label"><span>D30当前 950</span><span>缺口 50</span><span>目标 1000</span></div>
+            <div class="progress" style="background: #ecd90a;">
+              <div class="fill" style="width: 95%; background: var(--green);"></div>
+            </div>
+          </div>
+          <div style="flex:1;">
+            <div class="bar-label"><span>月度已用 700</span><span>剩余 500</span><span>上限 1200</span></div>
+            <div class="progress">
+              <div class="fill" style="width: 80%; background: var(--blue);"></div>
+            </div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="bar-label"><span>计划完成度（日维度）</span><span>共7天</span></div>
+        <div class="segmented-bar" title="灰底：每日计划；绿=实际；超出部分用红叠加">
+          <div class="segment"><span class="fill" style="width: 100%;"></span></div>
+          <div class="segment"><span class="fill" style="width: 100%;"></span></div>
+          <div class="segment over-cap">
+            <span class="fill" style="width: 100%;"></span>
+            <span class="overfill" style="width: 60%;"></span>
+            <span class="overfill-text">超出 188</span>
+          </div>
+          <div class="segment" style="background: #ecd90a;">
+            <span class="fill" style="width: 40%;"></span>
+          </div>
+          <div class="segment"><span class="fill" style="width: 100%;"></span></div>
+          <div class="segment"><span class="fill" style="width: 0%;"></span></div>
+          <div class="segment"><span class="fill" style="width: 0%;"></span></div>
+        </div>
+        <div class="segment-dates">
+          <div class="date-cell"><span>2025-12-01</span></div>
+          <div class="date-cell"><span>2025-12-02</span></div>
+          <div class="date-cell">
+            <span>2025-12-03</span>
+          </div>
+          <div class="date-cell">
+            <span>2025-12-04</span>
+            <span class="marker-dot" data-tip="当日D30触发，需补量"></span>
+          </div>
+          <div class="date-cell"><span>2025-12-05</span></div>
+          <div class="date-cell"><span>2025-12-06</span></div>
+          <div class="date-cell"><span>2025-12-07</span></div>
+        </div>
+        <p></p>
+        <p class="hint">说明1：按天切片，灰底为计划，绿色为实际；若当日超出，超出部分黄色字体显示在绿色部分中）。</p>
+        <p class="hint">说明2：日期下方标注红点代表改天触发了D30预警，需补量</p>
+      </div>
+
+      <div class="card">
+        <div class="topbar">
+          <h3>达人B（待观察）</h3>
+          <span class="badge green" title="点击角标弹出预警说明">正常</span>
+          <span class="badge red" title="点击角标弹出预警说明">D30预警(周期内)</span>
+          <!-- <span class="badge yellow" title="点击角标弹出预警说明">月度风险</span> -->
+        </div>
+        <div class="bar-label"><span>0</span><span>当前 150</span><span>周期计划总额 180</span></div>
+        <div class="progress" title="计划总额 180，已执行 80，进度 44%">
+          <div class="fill" style="width: 40%; background: var(--blue);"></div>
+          <div class="cap" style="right: calc(100% - 100%);"></div>
+        </div>
+        <div class="bar-label"><span></span><span class="hint">已执行 150（44%）</span></div>
+        <div class="divider"></div>
+        <div class="row">
+          <div style="flex:1;">
+            <div class="bar-label"><span>D30当前 950</span><span>缺口 50</span><span>目标 1000</span></div>
+            <div class="progress" style="background: #ecd90a;">
+              <div class="fill" style="width: 95%; background: var(--green);"></div>
+            </div>
+          </div>
+          <div style="flex:1;">
+            <div class="bar-label"><span>月度已用 700</span><span>剩余 500</span><span>上限 1200</span></div>
+            <div class="progress">
+              <div class="fill" style="width: 80%; background: var(--blue);"></div>
+            </div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="bar-label"><span>计划完成度（日维度）</span><span>共7天</span></div>
+        <div class="segmented-bar" title="灰底：每日计划；绿=实际；超出部分用红叠加">
+          <div class="segment"><span class="fill" style="width: 100%;"></span></div>
+          <div class="segment"><span class="fill" style="width: 100%;"></span></div>
+          <div class="segment over-cap">
+            <span class="fill" style="width: 100%;"></span>
+            <span class="overfill" style="width: 60%;"></span>
+            <span class="overfill-text">超出 188</span>
+          </div>
+          <div class="segment" style="background: #ecd90a;">
+            <span class="fill" style="width: 40%;"></span>
+          </div>
+          <div class="segment"><span class="fill" style="width: 100%;"></span></div>
+          <div class="segment"><span class="fill" style="width: 0%;"></span></div>
+          <div class="segment"><span class="fill" style="width: 0%;"></span></div>
+        </div>
+        <div class="segment-dates">
+          <div class="date-cell"><span>2025-12-01</span></div>
+          <div class="date-cell"><span>2025-12-02</span></div>
+          <div class="date-cell">
+            <span>2025-12-03</span>
+          </div>
+          <div class="date-cell">
+            <span>2025-12-04</span>
+            <span class="marker-dot" data-tip="当日D30触发，需补量"></span>
+          </div>
+          <div class="date-cell"><span>2025-12-05</span></div>
+          <div class="date-cell"><span>2025-12-06</span></div>
+          <div class="date-cell"><span>2025-12-07</span></div>
+        </div>
+        <p></p>
+        <p class="hint">说明1：按天切片，灰底为计划，绿色为实际；若当日超出，超出部分黄色字体显示在绿色部分中）。</p>
+        <p class="hint">说明2：日期下方标注红点代表改天触发了D30预警，需补量</p>
+      </div>
+
+      <div class="card">
+        <div class="topbar">
+          <h3>达人C（待观察）</h3>
+          <span class="badge green" title="点击角标弹出预警说明">正常</span>
+          <span class="badge red" title="点击角标弹出预警说明">D30预警(周期内)</span>
+          <!-- <span class="badge yellow" title="点击角标弹出预警说明">月度风险</span> -->
+        </div>
+        <div class="bar-label"><span>0</span><span>当前 150</span><span>周期计划总额 180</span></div>
+        <div class="progress" title="计划总额 180，已执行 80，进度 44%">
+          <div class="fill" style="width: 40%; background: var(--blue);"></div>
+          <div class="cap" style="right: calc(100% - 100%);"></div>
+        </div>
+        <div class="bar-label"><span></span><span class="hint">已执行 150（44%）</span></div>
+        <div class="divider"></div>
+        <div class="row">
+          <div style="flex:1;">
+            <div class="bar-label"><span>D30当前 950</span><span>缺口 50</span><span>目标 1000</span></div>
+            <div class="progress" style="background: #ecd90a;">
+              <div class="fill" style="width: 95%; background: var(--green);"></div>
+            </div>
+          </div>
+          <div style="flex:1;">
+            <div class="bar-label"><span>月度已用 700</span><span>剩余 500</span><span>上限 1200</span></div>
+            <div class="progress">
+              <div class="fill" style="width: 80%; background: var(--blue);"></div>
+            </div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="bar-label"><span>计划完成度（日维度）</span><span>共7天</span></div>
+        <div class="segmented-bar" title="灰底：每日计划；绿=实际；超出部分用红叠加">
+          <div class="segment"><span class="fill" style="width: 100%;"></span></div>
+          <div class="segment"><span class="fill" style="width: 100%;"></span></div>
+          <div class="segment over-cap">
+            <span class="fill" style="width: 100%;"></span>
+            <span class="overfill" style="width: 60%;"></span>
+            <span class="overfill-text">超出 188</span>
+          </div>
+          <div class="segment" style="background: #ecd90a;">
+            <span class="fill" style="width: 40%;"></span>
+          </div>
+          <div class="segment"><span class="fill" style="width: 100%;"></span></div>
+          <div class="segment"><span class="fill" style="width: 0%;"></span></div>
+          <div class="segment"><span class="fill" style="width: 0%;"></span></div>
+        </div>
+        <div class="segment-dates">
+          <div class="date-cell"><span>2025-12-01</span></div>
+          <div class="date-cell"><span>2025-12-02</span></div>
+          <div class="date-cell">
+            <span>2025-12-03</span>
+          </div>
+          <div class="date-cell">
+            <span>2025-12-04</span>
+            <span class="marker-dot" data-tip="当日D30触发，需补量"></span>
+          </div>
+          <div class="date-cell"><span>2025-12-05</span></div>
+          <div class="date-cell"><span>2025-12-06</span></div>
+          <div class="date-cell"><span>2025-12-07</span></div>
+        </div>
+        <p></p>
+        <p class="hint">说明1：按天切片，灰底为计划，绿色为实际；若当日超出，超出部分黄色字体显示在绿色部分中）。</p>
+        <p class="hint">说明2：日期下方标注红点代表改天触发了D30预警，需补量</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 结束面板：复制监控面板内容 -->
+  <div class="section">
+    <h2>结束面板</h2>
+  </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="topbar">
+          <h3>达人A</h3>
+          <span class="badge" style="background:#9ca3af;">已结束</span>
+          <span class="badge green" title="点击角标弹出预警说明">正常</span>
+          <span class="badge red" title="点击角标弹出预警说明">D30预警(周期内)</span>
+          <!-- <span class="badge yellow" title="点击角标弹出预警说明">月度风险</span> -->
+        </div>
+        <div class="bar-label"><span>0</span><span>周期计划总额 180</span></div>
+        <div class="progress" title="计划总额 180，已执行 180，进度 100%">
+          <div class="fill" style="width: 100%; background: var(--blue);"></div>
+          <div class="cap" style="right: calc(100% - 100%);"></div>
+        </div>
+        <div class="bar-label"><span></span><span class="hint">已执行 180（100%）</span></div>
+        <div class="divider"></div>
+        <div class="row">
+          <div style="flex:1;">
+            <div class="bar-label"><span>D30当前 950</span><span>缺口 50</span><span>目标 1000</span></div>
+            <div class="progress" style="background: #ecd90a;">
+              <div class="fill" style="width: 95%; background: var(--green);"></div>
+            </div>
+          </div>
+          <div style="flex:1;">
+            <div class="bar-label"><span>月度已用 700</span><span>剩余 500</span><span>上限 1200</span></div>
+            <div class="progress">
+              <div class="fill" style="width: 80%; background: var(--blue);"></div>
+            </div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="bar-label"><span>计划完成度（日维度）</span><span>共7天</span></div>
+        <div class="segmented-bar" title="灰底：每日计划；绿=实际；超出部分用红叠加">
+          <div class="segment"><span class="fill" style="width: 100%;"></span></div>
+          <div class="segment"><span class="fill" style="width: 100%;"></span></div>
+          <div class="segment over-cap">
+            <span class="fill" style="width: 100%;"></span>
+            <span class="overfill" style="width: 60%;"></span>
+            <span class="overfill-text">超出 188</span>
+          </div>
+          <div class="segment" style="background: #ecd90a;">
+            <span class="fill" style="width: 40%;"></span>
+          </div>
+          <div class="segment"><span class="fill" style="width: 100%;"></span></div>
+          <div class="segment"><span class="fill" style="width: 80%;"></span></div>
+          <div class="segment"><span class="fill" style="width: 90%;"></span></div>
+        </div>
+        <div class="segment-dates">
+          <div class="date-cell"><span>2025-12-01</span></div>
+          <div class="date-cell"><span>2025-12-02</span></div>
+          <div class="date-cell">
+            <span>2025-12-03</span>
+          </div>
+          <div class="date-cell">
+            <span>2025-12-04</span>
+            <span class="marker-dot" title="当日D30触发，需补量"></span>
+          </div>
+          <div class="date-cell"><span>2025-12-05</span></div>
+          <div class="date-cell"><span>2025-12-06</span></div>
+          <div class="date-cell"><span>2025-12-07</span></div>
+        </div>
+        <p></p>
+        <p class="hint">说明1：按天切片，灰底为计划，绿色为实际；若当日超出，超出部分黄色字体显示在绿色部分中）。</p>
+        <p class="hint">说明2：日期下方标注红点代表改天触发了D30预警，需补量</p>
+      </div>
+
+      <div class="card">
+        <div class="topbar">
+          <h3>达人B</h3>
+          <span class="badge" style="background:#9ca3af;">已结束</span>
+          <span class="badge green" title="点击角标弹出预警说明">正常</span>
+          <span class="badge red" title="点击角标弹出预警说明">D30预警(周期内)</span>
+          <!-- <span class="badge yellow" title="点击角标弹出预警说明">月度风险</span> -->
+        </div>
+        <div class="bar-label"><span>0</span><span>周期计划总额 180</span></div>
+        <div class="progress" title="计划总额 180，已执行 180，进度 100%">
+          <div class="fill" style="width: 100%; background: var(--blue);"></div>
+          <div class="cap" style="right: calc(100% - 100%);"></div>
+        </div>
+        <div class="bar-label"><span></span><span class="hint">已执行 150（100%）</span></div>
+        <div class="divider"></div>
+        <div class="row">
+          <div style="flex:1;">
+            <div class="bar-label"><span>D30当前 950</span><span>缺口 50</span><span>目标 1000</span></div>
+            <div class="progress" style="background: #ecd90a;">
+              <div class="fill" style="width: 95%; background: var(--green);"></div>
+            </div>
+          </div>
+          <div style="flex:1;">
+            <div class="bar-label"><span>月度已用 700</span><span>剩余 500</span><span>上限 1200</span></div>
+            <div class="progress">
+              <div class="fill" style="width: 80%; background: var(--blue);"></div>
+            </div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="bar-label"><span>计划完成度（日维度）</span><span>共7天</span></div>
+        <div class="segmented-bar" title="灰底：每日计划；绿=实际；超出部分用红叠加">
+          <div class="segment"><span class="fill" style="width: 100%;"></span></div>
+          <div class="segment"><span class="fill" style="width: 100%;"></span></div>
+          <div class="segment over-cap">
+            <span class="fill" style="width: 100%;"></span>
+            <span class="overfill" style="width: 60%;"></span>
+            <span class="overfill-text">超出 188</span>
+          </div>
+          <div class="segment" style="background: #ecd90a;">
+            <span class="fill" style="width: 40%;"></span>
+          </div>
+          <div class="segment"><span class="fill" style="width: 100%;"></span></div>
+          <div class="segment"><span class="fill" style="width: 80%;"></span></div>
+          <div class="segment"><span class="fill" style="width: 90%;"></span></div>
+        </div>
+        <div class="segment-dates">
+          <div class="date-cell"><span>2025-12-01</span></div>
+          <div class="date-cell"><span>2025-12-02</span></div>
+          <div class="date-cell">
+            <span>2025-12-03</span>
+          </div>
+          <div class="date-cell">
+            <span>2025-12-04</span>
+            <span class="marker-dot" title="当日D30触发，需补量"></span>
+          </div>
+          <div class="date-cell"><span>2025-12-05</span></div>
+          <div class="date-cell"><span>2025-12-06</span></div>
+          <div class="date-cell"><span>2025-12-07</span></div>
+        </div>
+        <p></p>
+        <p class="hint">说明1：按天切片，灰底为计划，绿色为实际；若当日超出，超出部分黄色字体显示在绿色部分中）。</p>
+        <p class="hint">说明2：日期下方标注红点代表改天触发了D30预警，需补量</p>
+      </div>
+
+      <div class="card">
+        <div class="topbar">
+          <h3>达人C</h3>
+          <span class="badge" style="background:#9ca3af;">已结束</span>
+          <span class="badge green" title="点击角标弹出预警说明">正常</span>
+          <span class="badge red" title="点击角标弹出预警说明">D30预警(周期内)</span>
+          <!-- <span class="badge yellow" title="点击角标弹出预警说明">月度风险</span> -->
+        </div>
+        <div class="bar-label"><span>0</span><span>周期计划总额 180</span></div>
+        <div class="progress" title="计划总额 180，已执行 150，进度 85%">
+          <div class="fill" style="width: 85%; background: var(--blue);"></div>
+          <div class="cap" style="right: calc(100% - 100%);"></div>
+        </div>
+        <div class="bar-label"><span></span><span class="hint">已执行 150（85%）</span></div>
+        <div class="divider"></div>
+        <div class="row">
+          <div style="flex:1;">
+            <div class="bar-label"><span>D30当前 950</span><span>缺口 50</span><span>目标 1000</span></div>
+            <div class="progress" style="background: #ecd90a;">
+              <div class="fill" style="width: 95%; background: var(--green);"></div>
+            </div>
+          </div>
+          <div style="flex:1;">
+            <div class="bar-label"><span>月度已用 700</span><span>剩余 500</span><span>上限 1200</span></div>
+            <div class="progress">
+              <div class="fill" style="width: 80%; background: var(--blue);"></div>
+            </div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="bar-label"><span>计划完成度（日维度）</span><span>共7天</span></div>
+        <div class="segmented-bar" title="灰底：每日计划；绿=实际；超出部分用红叠加">
+          <div class="segment"><span class="fill" style="width: 100%;"></span></div>
+          <div class="segment"><span class="fill" style="width: 100%;"></span></div>
+          <div class="segment over-cap">
+            <span class="fill" style="width: 100%;"></span>
+            <span class="overfill" style="width: 60%;"></span>
+            <span class="overfill-text">超出 188</span>
+          </div>
+          <div class="segment" style="background: #ecd90a;">
+            <span class="fill" style="width: 40%;"></span>
+          </div>
+          <div class="segment"><span class="fill" style="width: 100%;"></span></div>
+          <div class="segment"><span class="fill" style="width: 80%;"></span></div>
+          <div class="segment"><span class="fill" style="width: 90%;"></span></div>
+        </div>
+        <div class="segment-dates">
+          <div class="date-cell"><span>2025-12-01</span></div>
+          <div class="date-cell"><span>2025-12-02</span></div>
+          <div class="date-cell">
+            <span>2025-12-03</span>
+          </div>
+          <div class="date-cell">
+            <span>2025-12-04</span>
+            <span class="marker-dot" title="当日D30触发，需补量"></span>
+          </div>
+          <div class="date-cell"><span>2025-12-05</span></div>
+          <div class="date-cell">
+            <span>2025-12-06</span>
+            <span class="marker-dot" data-tip="当日D30触发，需补量"></span>
+          </div>
+          <div class="date-cell"><span>2025-12-07</span></div>
+        </div>
+        <p></p>
+        <p class="hint">说明1：按天切片，灰底为计划，绿色为实际；若当日超出，超出部分黄色字体显示在绿色部分中）。</p>
+        <p class="hint">说明2：日期下方标注红点代表改天触发了D30预警，需补量</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+

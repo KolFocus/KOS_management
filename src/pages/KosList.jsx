@@ -511,7 +511,7 @@ export default function KosList() {
           form={form}
           layout="vertical"
           initialValues={{
-            参与统计: STATUS.ONLINE
+            参与统计: STATUS.OFFLINE
           }}
         >
           <Form.Item
@@ -565,8 +565,8 @@ export default function KosList() {
             rules={[{ required: true, message: '请选择参与统计状态' }]}
           >
             <Select>
-              <Option value={STATUS.ONLINE}>上线</Option>
-              <Option value={STATUS.OFFLINE}>下线</Option>
+              <Option value={STATUS.ONLINE}>参与(1)</Option>
+              <Option value={STATUS.OFFLINE}>不参与(0)</Option>
             </Select>
           </Form.Item>
         </Form>
@@ -608,7 +608,7 @@ export default function KosList() {
             <div style={{ marginBottom: 8 }}>模板字段说明：</div>
             <div>• 用户ID（必填）</div>
             <div>• 排序、所属用户、所属店铺、渠道（可选）</div>
-            <div>• 参与统计：1=上线，2=下线（可选，默认1）</div>
+            <div>• 参与统计：1=参与，0=不参与（可选，默认0）</div>
             <div style={{ marginBottom: 12 }}>• 品牌信息在上方选择器中指定</div>
             <Button 
               icon={<DownloadOutlined />} 
