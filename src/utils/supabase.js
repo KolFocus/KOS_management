@@ -10,7 +10,8 @@ export const TABLES = {
   KOS_LIST: '配置_小红书专业号_kos列表',
   SALES_DATA: '品牌离线导入_kos销售数据',
   KOS_ACCOUNT: '小红书专业号_kos账号数据',
-  KOS_LEADS: '小红书专业号_kos线索统计'
+  KOS_LEADS: '小红书专业号_kos线索统计',
+  KOS_ON_OFF_RECORD: 'kos_on_off_record'
 }
 
 // 状态常量（1=参与，0=不参与）

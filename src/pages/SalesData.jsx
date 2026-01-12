@@ -32,7 +32,12 @@ import { useBrandManagementStore } from '../stores/brandManagementStore'
 import { useAuthStore } from '../stores/authStore'
 import { exportToExcel, ExcelUtils } from '../utils/excel'
 import dayjs from 'dayjs'
+import updateLocale from 'dayjs/plugin/updateLocale'
 import zhCN from 'antd/es/locale/zh_CN'
+
+// 将周起始调整为周五（0=周日，5=周五）
+dayjs.extend(updateLocale)
+dayjs.updateLocale('zh-cn', { weekStart: 5 })
 
 const { Option } = Select
 const { RangePicker } = DatePicker
@@ -105,9 +110,16 @@ export default function SalesData() {
   }, [initialized, user, isInitialized])
 
   // 计算默认日期
+  // 自定义“周”口径：周五到下周四
+  const getCustomWeekRange = (date) => {
+    const start = dayjs(date).startOf('isoWeek').add(4, 'day') // 周一 +4 = 周五
+    const end = start.add(6, 'day') // 覆盖 7 天
+    return { start, end }
+  }
+
   const calculateDateByCycleType = (date, cycleType) => {
     if (cycleType === 'BY_WEEK') {
-      return dayjs(date).startOf('week').add(1, 'day').format('YYYY-MM-DD')
+      return getCustomWeekRange(date).start.format('YYYY-MM-DD')
     }
     return dayjs(date).format('YYYY-MM-DD')
   }
@@ -274,9 +286,8 @@ export default function SalesData() {
     const weekValue = values.week
 
     if (weekValue) {
-      const weekDayjs = dayjs(weekValue)
-      const weekStartDate = weekDayjs.startOf('isoWeek').format('YYYY-MM-DD')
-      params.exactDate = weekStartDate
+      const { start } = getCustomWeekRange(weekValue)
+      params.exactDate = start.format('YYYY-MM-DD')
       params.cycleType = 'BY_WEEK'
     } else {
       delete params.exactDate
@@ -478,7 +489,14 @@ export default function SalesData() {
           </Form.Item>
           <ConfigProvider locale={zhCN}>
             <Form.Item name="week" label="周">
-              <DatePicker picker="week" format="YYYY-第WW周" />
+              <DatePicker
+                picker="week"
+                format={(value) => {
+                  if (!value) return ''
+                  const { start, end } = getCustomWeekRange(value)
+                  return `${start.format('YYYY-MM-DD')} ~ ${end.format('YYYY-MM-DD')}`
+                }}
+              />
             </Form.Item>
           </ConfigProvider>
           <Form.Item>
@@ -687,14 +705,13 @@ export default function SalesData() {
                 style={{ width: '100%' }}
                 format={(value) => {
                   if (!value) return ''
-                  const start = dayjs(value).startOf('isoWeek')
-                  const end = dayjs(value).endOf('isoWeek')
+                  const { start, end } = getCustomWeekRange(value)
                   return `${start.format('YYYY-MM-DD')} ~ ${end.format('YYYY-MM-DD')}`
                 }}
                 onChange={(date) => {
                   if (date) {
-                    const weekStart = dayjs(date).startOf('isoWeek') // 周一（北京时间）
-                    importForm.setFieldsValue({ date: weekStart })
+                    const { start } = getCustomWeekRange(date)
+                    importForm.setFieldsValue({ date: start })
                   }
                 }}
               />

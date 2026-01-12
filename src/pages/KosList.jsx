@@ -12,10 +12,11 @@ import {
   message,
   Popconfirm,
   Upload,
-  Tag,
   Row,
   Col,
-  Statistic
+  Statistic,
+  Switch,
+  DatePicker
 } from 'antd'
 import { 
   PlusOutlined, 
@@ -25,10 +26,12 @@ import {
   DownloadOutlined,
   SearchOutlined
 } from '@ant-design/icons'
+import dayjs from 'dayjs'
 import { useKosListStore } from '../stores/kosListStore'
 import { useBrandManagementStore } from '../stores/brandManagementStore'
 import { STATUS } from '../utils/supabase'
 import { exportToExcel, ExcelUtils } from '../utils/excel'
+import { KosListAPI } from '../api/kosList'
 
 const { Option } = Select
 
@@ -59,11 +62,18 @@ export default function KosList() {
   const { getBrandOptions } = useBrandManagementStore()
 
   const [form] = Form.useForm()
-  const [editForm] = Form.useForm()
   const [isModalVisible, setIsModalVisible] = useState(false)
   const [isEdit, setIsEdit] = useState(false)
   const [selectedRowKeys, setSelectedRowKeys] = useState([])
   const [searchForm] = Form.useForm()
+  const [statusUpdating, setStatusUpdating] = useState(new Set())
+  const [recordModalVisible, setRecordModalVisible] = useState(false)
+  const [recordLoading, setRecordLoading] = useState(false)
+  const [recordList, setRecordList] = useState([])
+  const [currentKos, setCurrentKos] = useState(null)
+  const [recordForm] = Form.useForm()
+  const [editingRecordId, setEditingRecordId] = useState(null)
+  const [toggleReverting, setToggleReverting] = useState(new Set())
   
   // 导入相关
   const [importModalVisible, setImportModalVisible] = useState(false)
@@ -127,18 +137,33 @@ export default function KosList() {
       dataIndex: '参与统计',
       key: '参与统计',
       width: 100,
-      render: (status) => (
-        <Tag color={status === STATUS.ONLINE ? 'green' : 'red'}>
-          {status === STATUS.ONLINE ? '上线' : '下线'}
-        </Tag>
-      ),
+      render: (status, record) => {
+        const rowKey = `${record.品牌ID}-${record.用户ID}`
+        return (
+          <Space size={8}>
+            <Switch
+              checked={status === STATUS.ONLINE}
+              checkedChildren="上线"
+              unCheckedChildren="下线"
+              loading={statusUpdating.has(rowKey)}
+              onChange={(checked) => handleStatusToggle(record, checked)}
+            />
+          </Space>
+        )
+      },
     },
     {
       title: '操作',
       key: 'action',
-      width: 150,
+    width: 220,
       render: (_, record) => (
         <Space size="small">
+        <Button
+          type="link"
+          onClick={() => openRecordModal(record)}
+        >
+          上下线记录
+        </Button>
           <Button
             type="link"
             icon={<EditOutlined />}
@@ -257,6 +282,181 @@ export default function KosList() {
       fetchStatistics()
     } catch (error) {
       message.error('批量删除失败: ' + error.message)
+    }
+  }
+
+  // 获取上下线记录列表
+  const fetchKosRecords = async (userId) => {
+    setRecordLoading(true)
+    try {
+      const data = await KosListAPI.getKosOnOffRecords(userId)
+      setRecordList(data)
+    } catch (error) {
+      message.error(error.message)
+    } finally {
+      setRecordLoading(false)
+    }
+  }
+
+  // 打开上下线记录弹窗
+  const openRecordModal = async (record) => {
+    setCurrentKos(record)
+    setRecordModalVisible(true)
+    setEditingRecordId(null)
+    recordForm.resetFields()
+    await fetchKosRecords(record.用户ID)
+  }
+
+  const closeRecordModal = () => {
+    setRecordModalVisible(false)
+    setRecordList([])
+    setCurrentKos(null)
+    setEditingRecordId(null)
+    recordForm.resetFields()
+  }
+
+  // 新增/编辑上下线记录提交
+  const handleSubmitRecord = async () => {
+    if (!currentKos) {
+      message.warning('未找到当前KOS信息')
+      return
+    }
+
+    try {
+      const values = await recordForm.validateFields()
+      const [start, end] = values.range || []
+      if (!start || !end) {
+        message.warning('请选择起止时间')
+        return
+      }
+      if (dayjs(start).isAfter(dayjs(end))) {
+        message.warning('起始时间需早于结束时间')
+        return
+      }
+
+      const payload = {
+        用户ID: currentKos.用户ID,
+        起始时间: dayjs(start).format('YYYY-MM-DD HH:mm:ss'),
+        结束时间: dayjs(end).format('YYYY-MM-DD HH:mm:ss')
+      }
+
+      if (editingRecordId) {
+        await KosListAPI.updateKosOnOffRecord(editingRecordId, payload)
+        message.success('记录已更新')
+      } else {
+        await KosListAPI.createKosOnOffRecord(payload)
+        message.success('记录已新增')
+      }
+
+      setEditingRecordId(null)
+      recordForm.resetFields()
+      await fetchKosRecords(currentKos.用户ID)
+    } catch (error) {
+      message.error(error.message || '提交失败')
+    }
+  }
+
+  // 编辑某条记录
+  const handleEditRecord = (record) => {
+    setEditingRecordId(record.id)
+    recordForm.setFieldsValue({
+      range: [dayjs(record.起始时间), dayjs(record.结束时间)]
+    })
+  }
+
+  // 删除记录
+  const handleDeleteRecord = async (id) => {
+    try {
+      await KosListAPI.deleteKosOnOffRecord(id)
+      message.success('删除成功')
+      if (currentKos?.用户ID) {
+        await fetchKosRecords(currentKos.用户ID)
+      }
+    } catch (error) {
+      message.error(error.message || '删除失败')
+    }
+  }
+
+  const recordColumns = [
+    {
+      title: '起始时间',
+      dataIndex: '起始时间',
+      key: 'start',
+    },
+    {
+      title: '结束时间',
+      dataIndex: '结束时间',
+      key: 'end',
+    },
+    {
+      title: '操作',
+      key: 'recordAction',
+      width: 150,
+      render: (_, record) => (
+        <Space size="small">
+          <Button type="link" onClick={() => handleEditRecord(record)}>
+            编辑
+          </Button>
+          <Popconfirm
+            title="确定删除该记录吗？"
+            okText="确定"
+            cancelText="取消"
+            onConfirm={() => handleDeleteRecord(record.id)}
+          >
+            <Button type="link" danger>
+              删除
+            </Button>
+          </Popconfirm>
+        </Space>
+      ),
+    }
+  ]
+
+  // 行内状态切换
+  const handleStatusToggle = async (record, checked) => {
+    const currentStatus = record.参与统计
+    const nextStatus = checked ? STATUS.ONLINE : STATUS.OFFLINE
+    const rowKey = `${record.品牌ID}-${record.用户ID}`
+
+    if (currentStatus === nextStatus) {
+      message.info('状态未变化，无需操作')
+      return
+    }
+
+    setStatusUpdating(prev => new Set(prev).add(rowKey))
+
+    try {
+      // 留痕记录：上线创建未结束记录，下线补齐最近未结束记录
+      if (nextStatus === STATUS.ONLINE) {
+        await KosListAPI.createKosOnOffRecord({
+          用户ID: record.用户ID,
+          起始时间: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+          结束时间: null
+        })
+      } else {
+        const openRecord = await KosListAPI.getLatestOpenOnOffRecord(record.用户ID)
+        if (openRecord) {
+          await KosListAPI.updateKosOnOffRecord(openRecord.id, {
+            结束时间: dayjs().format('YYYY-MM-DD HH:mm:ss')
+          })
+        }
+      }
+
+      await updateKos(record.品牌ID, record.用户ID, { 参与统计: nextStatus })
+      message.success(`已${checked ? '上线' : '下线'}`)
+      fetchStatistics()
+
+      if (recordModalVisible && currentKos?.用户ID === record.用户ID) {
+        await fetchKosRecords(record.用户ID)
+      }
+    } catch (error) {
+      message.error('更新状态失败: ' + error.message)
+    } finally {
+      setStatusUpdating(prev => {
+        const next = new Set(prev)
+        next.delete(rowKey)
+        return next
+      })
     }
   }
 
@@ -495,6 +695,59 @@ export default function KosList() {
           scroll={{ x: 1200 }}
         />
       </Card>
+
+      {/* 上下线记录弹窗 */}
+      <Modal
+        title={`上下线记录 - ${currentKos?.用户ID || ''}`}
+        open={recordModalVisible}
+        onCancel={closeRecordModal}
+        footer={null}
+        width={720}
+        destroyOnClose
+      >
+        <Form
+          form={recordForm}
+          layout="inline"
+          style={{ marginBottom: 12 }}
+        >
+          <Form.Item
+            name="range"
+            label="起止时间"
+            rules={[{ required: true, message: '请选择时间范围' }]}
+          >
+            <DatePicker.RangePicker
+              showTime
+              format="YYYY-MM-DD HH:mm:ss"
+            />
+          </Form.Item>
+          <Form.Item>
+            <Space>
+              <Button type="primary" onClick={handleSubmitRecord}>
+                {editingRecordId ? '保存修改' : '新增记录'}
+              </Button>
+              {editingRecordId && (
+                <Button
+                  onClick={() => {
+                    setEditingRecordId(null)
+                    recordForm.resetFields()
+                  }}
+                >
+                  取消编辑
+                </Button>
+              )}
+            </Space>
+          </Form.Item>
+        </Form>
+
+        <Table
+          size="small"
+          rowKey="id"
+          columns={recordColumns}
+          dataSource={recordList}
+          loading={recordLoading}
+          pagination={false}
+        />
+      </Modal>
 
       {/* 新增/编辑对话框 */}
       <Modal
